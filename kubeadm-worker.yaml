@@ -14,7 +14,7 @@ systemd:
         Environment=PATH=/usr/bin:/usr/sbin:/opt/bin
         Type=oneshot
         ExecStartPre=/bin/sh -c 'cat /etc/kubeadm/config.yaml.tpl | envsubst > /etc/kubeadm/config.yaml'
-        ExecStart=/opt/bin/kubeadm join --config /etc/kubeadm/config.yaml --upload-certs
+        ExecStart=/opt/bin/kubeadm join --config /etc/kubeadm/config.yaml
         Restart=on-failure
         RestartSec=120s
         [Install]
