@@ -1,6 +1,6 @@
 systemd:
   units:
-    - name: kubeadm-join.service
+    - name: kubeadm.service
       enabled: true
       contents: |
         [Unit]

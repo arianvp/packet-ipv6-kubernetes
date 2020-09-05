@@ -19,7 +19,7 @@ systemd:
       enabled: true
       contents: |
         [Unit]
-        After=kubeadm-init.service
+        After=kubeadm.service
         [Service]
         Environment=KUBECONFIG=/etc/kubernetes/admin.conf
         Environment=DATASTORE_TYPE=kubernetes
