@@ -5,13 +5,16 @@ systemd:
       contents: |
         [Unit]
         ConditionPathExists=!/etc/kubernetes/kubelet.conf
+        After=coreos-metadata.service
+        Requires=coreos-metadata.service
         StartLimitInterval=1200s
         StartLimitBurst=5
         [Service]
+        EnvironmentFile=/run/metadata/coreos
         Environment=PATH=/usr/bin:/usr/sbin:/opt/bin
         Type=oneshot
         ExecStartPre=/bin/sh -c 'cat /etc/kubeadm/config.yaml.tpl | envsubst > /etc/kubeadm/config.yaml'
-        ExecStart=/opt/bin/kubeadm init --config /etc/kubeadm/config.yaml --upload-certs
+        ExecStart=/opt/bin/kubeadm join --config /etc/kubeadm/config.yaml --upload-certs
         Restart=on-failure
         RestartSec=120s
         [Install]
@@ -23,7 +26,7 @@ storage:
         inline: |
           ---
           apiVersion: kubeadm.k8s.io/v1beta2
-          kind: InitConfiguration
+          kind: JoinConfiguration
           nodeRegistration:
             kubeletExtraArgs:
               volume-plugin-dir: "/opt/libexec/kubernetes/kubelet-plugins/volume/exec/"
