@@ -5,7 +5,12 @@ terraform {
       version = "3.0.1"
     }
     ct = {
-      source = "poseidon/ct"
+      source  = "poseidon/ct"
+      version = "~> 0.6.1"
+    }
+    digitalocean = {
+      source  = "digitalocean/digitalocean"
+      version = "~> 1.22.2"
     }
   }
 }
@@ -24,7 +29,9 @@ locals {
   # connect to the kubernetes API server through its service_ip! This is by
   # convention always the first IP in the block. We can use this in kubeadm for
   # a multi-master setup :)
-  apiserver_service_ip = cidrhost(local.service_cidr_range, 1)
+  apiserver_cluster_ip = cidrhost(local.service_cidr_range, 1)
+
+  apiserver_domain = "kube.arianvp.me"
 
   K8S_VERSION  = "v1.19.0"
   KUBEADM_URL  = "https://storage.googleapis.com/kubernetes-release/release/${local.K8S_VERSION}/bin/linux/amd64/kubeadm"
@@ -52,6 +59,31 @@ locals {
   })
 
 }
+
+data "digitalocean_domain" "arianvp" {
+  name = "arianvp.me"
+}
+
+
+resource "digitalocean_record" "arianvp" {
+  domain = data.digitalocean_domain.arianvp.name
+  type   = "AAAA"
+  name   = "kube"
+  value  = packet_device.master.access_public_ipv6
+
+  # TODO: UNCOMMENT THE FOLLOWING LINE AFTER THE FIRST MASTER NODER IS ONLINE
+  # Once Calico has been initialised, it will expose the kube-apiserver
+  # ClusterIP over BGP which wil load-balance between all the apiservers
+  # However, kubeadm insists on the controlplane_endpoint being reachable
+  # during bootstrap and at that time the ClusterIP isn't serving traffic yet.
+  # Hence we se the controlplaneEndpoint to a domain name that will first point
+  # to a single master node; and once that master node is bootstrapped, we will
+  # have to swap the value to point to the ClusterIP instead
+
+  # value = local.apiserver_cluster_ip
+}
+
+
 
 # This is a pre-existing project, where I create and delete a device, such that
 # the
@@ -84,9 +116,10 @@ data "ct_config" "master" {
     templatefile("./ignition-master.yaml", {
       # TODO: There is a cycle. instead use coreos-metadata?
       # node_ip = packet_device.master.access_public_ipv6
-      pod_cidr_range       = local.pod_cidr_range
-      service_cidr_range   = local.service_cidr_range
-      apiserver_service_ip = local.apiserver_service_ip
+      pod_cidr_range         = local.pod_cidr_range
+      service_cidr_range     = local.service_cidr_range
+      external_cidr_range    = local.external_cidr_range
+      control_plane_endpoint = "kube.arianvp.me"
     })
   ]
 }
