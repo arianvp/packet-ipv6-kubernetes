@@ -10,8 +10,27 @@ systemd:
         [Service]
         Environment=PATH=/usr/bin:/usr/sbin:/opt/bin
         Type=oneshot
-        ExecStart=${worker_join_command}
+        ExecStartPre=/bin/sh -c 'cat /etc/kubeadm/config.yaml.tpl | envsubst > /etc/kubeadm/config.yaml'
+        ExecStart=/opt/bin/kubeadm init --config /etc/kubeadm/config.yaml --upload-certs
         Restart=on-failure
         RestartSec=120s
         [Install]
         WantedBy=multi-user.target
+storage:
+  files:
+    - path: "/etc/kubeadm/config.yaml.tpl"
+      contents:
+        inline: |
+          ---
+          apiVersion: kubeadm.k8s.io/v1beta2
+          kind: InitConfiguration
+          nodeRegistration:
+            kubeletExtraArgs:
+              volume-plugin-dir: "/opt/libexec/kubernetes/kubelet-plugins/volume/exec/"
+              # needed; otherwise kube-proxy will not come up
+              # Kubernetes just takes the first IP it sees; which is the wrong one :)
+              node-ip: "$${COREOS_PACKET_IPV6_PUBLIC_0}"
+          discovery:
+            bootstrapToken:
+              token: "${token}"
+              unsafeSkipCAVerification: true

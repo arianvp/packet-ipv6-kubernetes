@@ -16,10 +16,6 @@ locals {
   service_cidr_range  = cidrsubnet(local.service_cidr_range_, 44, 0)
   external_cidr_range = cidrsubnet(data.packet_precreated_ip_block.addresses.cidr_notation, 8, 3)
 
-  worker_join_command = "/opt/bin/kubeadm join ${local.apiserver_domain}:443 --token ${var.kubeadm_token} --discovery-token-unsafe-skip-ca-verification"
-  master_join_command = "${local.worker_join_command} --control-plane --certificate-key ${var.kubeadm_certificate_key}"
-
-
   # NOTE: We're in IPv6 land! Everything is public by default. So we can simply
   # connect to the kubernetes API server through its service_ip! This is by
   # convention always the first IP in the block. We can use this in kubeadm for
@@ -142,7 +138,7 @@ data "ct_config" "worker" {
   content = local.ignition_base
   snippets = [
     templatefile("./kubeadm-worker.yaml", {
-      worker_join_command = local.worker_join_command
+      token = var.kubeadm_token
     })
   ]
 }
