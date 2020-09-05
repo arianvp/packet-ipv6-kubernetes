@@ -11,13 +11,20 @@ terraform {
 }
 
 locals {
-  worker_count        = 0
+  worker_count        = 1
   pod_cidr_range      = cidrsubnet(data.packet_precreated_ip_block.addresses.cidr_notation, 8, 1)
   service_cidr_range_ = cidrsubnet(data.packet_precreated_ip_block.addresses.cidr_notation, 8, 2)
+  external_cidr_range = cidrsubnet(data.packet_precreated_ip_block.addresses.cidr_notation, 8, 3)
 
   # NOTE: subnet size for services in kubernetes can only be 20 bits in size;
   # hence allocate a smaller block in the larger /64 block
   service_cidr_range = cidrsubnet(local.service_cidr_range_, 44, 0)
+
+  # NOTE: We're in IPv6 land! Everything is public by default. So we can simply
+  # connect to the kubernetes API server through its service_ip! This is by
+  # convention always the first IP in the block. We can use this in kubeadm for
+  # a multi-master setup :)
+  apiserver_service_ip = cidrhost(local.service_cidr_range, 1)
 
   K8S_VERSION  = "v1.19.0"
   KUBEADM_URL  = "https://storage.googleapis.com/kubernetes-release/release/${local.K8S_VERSION}/bin/linux/amd64/kubeadm"
@@ -40,8 +47,8 @@ locals {
     KUBELET_HASH   = local.KUBELET_HASH
     KUBECTL_URL    = local.KUBECTL_URL
     KUBECTL_HASH   = local.KUBECTL_HASH
-    CALICOCTL_URL      = local.KUBECTL_URL
-    CALICOCTL_HASH     = local.KUBECTL_HASH
+    CALICOCTL_URL  = local.KUBECTL_URL
+    CALICOCTL_HASH = local.KUBECTL_HASH
   })
 
 }
@@ -77,8 +84,9 @@ data "ct_config" "master" {
     templatefile("./ignition-master.yaml", {
       # TODO: There is a cycle. instead use coreos-metadata?
       # node_ip = packet_device.master.access_public_ipv6
-      pod_cidr_range     = local.pod_cidr_range
-      service_cidr_range = local.service_cidr_range
+      pod_cidr_range       = local.pod_cidr_range
+      service_cidr_range   = local.service_cidr_range
+      apiserver_service_ip = local.apiserver_service_ip
     })
   ]
 }
