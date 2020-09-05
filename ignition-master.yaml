@@ -20,8 +20,20 @@ systemd:
         Type=oneshot
         ExecStart=/opt/bin/kubectl create -f https://docs.projectcalico.org/manifests/tigera-operator.yaml
         ExecStart=/opt/bin/kubectl create -f /etc/resources/calico.yaml
+        # ExecStart=/opt/bin/calicoctl create -f /etc/resources/bgpconfig.yaml
+        # ExecStart=/opt/bin/calicoctl create -f /etc/resources/bgppeering.yaml
 storage:
   files:
+    - path: "/opt/bin/calicoctl"
+      mode: 755
+      contents:
+        remote:
+          url: ${CALICOCTL_URL}
+          verification:
+            hash:
+              function: sha512
+              sum: "${CALICOCTL_HASH}"
+
     - path: "/etc/resources/calico.yaml"
       contents:
         inline: |

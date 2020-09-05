@@ -1,0 +1,9 @@
+apiVersion: projectcalico.org/v3
+kind: BGPPeer
+metadata:
+  name: master
+spec:
+  peerIP: "2604:1380:2000:d900::2" # default gateway (TODO make configurable)
+  # curl https://metadata.packet.net/metadata | jq '.network.addresses[] | select(.address_family == 6) | .gateway'
+  asNumber: 65530 # Packet's ASN
+  node: master 

@@ -29,13 +29,17 @@ locals {
   KUBECTL_URL  = "https://storage.googleapis.com/kubernetes-release/release/${local.K8S_VERSION}/bin/linux/amd64/kubectl"
   KUBECTL_HASH = "e27b8d65b49296be4366b828ef179416e50f22029d6a927e5b111ff001f553ce4603426121c1502575ee19613ff14203989b5cd42998684b66a053ae32e570ee"
 
+  CALICOCTL_URL  = "https://github.com/projectcalico/calicoctl/releases/download/v3.16.0/calicoctl"
+  CALICOCTL_HASH = "c011c4b81c29e17e570850c6a4a07062a5dd7ddccfbe902994dd5bff712f3148b8e028c1c788dc738d0ed73524f635cb516a781fc22522838c8651d904dd847f"
+
+
   ignition_base = templatefile("./ignition-base.yaml", {
-    KUBEADM_URL  = local.KUBEADM_URL
-    KUBEADM_HASH = local.KUBEADM_HASH
-    KUBELET_URL  = local.KUBELET_URL
-    KUBELET_HASH = local.KUBELET_HASH
-    KUBECTL_URL  = local.KUBECTL_URL
-    KUBECTL_HASH = local.KUBECTL_HASH
+    KUBEADM_URL    = local.KUBEADM_URL
+    KUBEADM_HASH   = local.KUBEADM_HASH
+    KUBELET_URL    = local.KUBELET_URL
+    KUBELET_HASH   = local.KUBELET_HASH
+    KUBECTL_URL    = local.KUBECTL_URL
+    KUBECTL_HASH   = local.KUBECTL_HASH
   })
 
 }
@@ -73,6 +77,8 @@ data "ct_config" "master" {
       # node_ip = packet_device.master.access_public_ipv6
       pod_cidr_range     = local.pod_cidr_range
       service_cidr_range = local.service_cidr_range
+      CALICOCTL_URL      = local.KUBECTL_URL
+      CALICOCTL_HASH     = local.KUBECTL_HASH
     })
   ]
 }
