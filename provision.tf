@@ -22,7 +22,7 @@ locals {
   # a multi-master setup :)
   apiserver_cluster_ip = cidrhost(local.service_cidr_range, 1)
 
-  apiserver_domain = "kube.arianvp.me"
+  control_plane_endpoint = "kube.arianvp.me"
 
   packet_asn = 65530 # NOTE: this wasn't actually documented anywhere? I found it "somewhere"
 
@@ -112,7 +112,7 @@ data "ct_config" "master" {
       external_cidr_range    = local.external_cidr_range
       certificate_key        = var.kubeadm_certificate_key
       token                  = var.kubeadm_token
-      control_plane_endpoint = "kube.arianvp.me"
+      control_plane_endpoint = local.control_plane_endpoint
     })
   ]
 }
@@ -123,7 +123,7 @@ resource "packet_bgp_session" "master" {
 }
 
 resource "packet_device" "worker" {
-  count            = 1
+  count            = 2
   depends_on       = [packet_device.master]
   hostname         = "worker${count.index}"
   plan             = "t1.small.x86"
@@ -138,7 +138,8 @@ data "ct_config" "worker" {
   content = local.ignition_base
   snippets = [
     templatefile("./kubeadm-worker.yaml", {
-      token = var.kubeadm_token
+      token                  = var.kubeadm_token
+      control_plane_endpoint = local.control_plane_endpoint
     })
   ]
 }
