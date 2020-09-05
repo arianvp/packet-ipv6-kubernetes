@@ -70,3 +70,14 @@ storage:
             hash:
               function: sha512
               sum: ${KUBECTL_HASH}
+    - path: "/opt/bin/calicoctl"
+      mode: 755
+      contents:
+        remote:
+          url: ${CALICOCTL_URL}
+          verification:
+            hash:
+              function: sha512
+              sum: "${CALICOCTL_HASH}"
+
+

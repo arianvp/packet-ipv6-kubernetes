@@ -17,6 +17,7 @@ systemd:
         After=kubeadm.service
         [Service]
         Environment=KUBECONFIG=/etc/kubernetes/admin.conf
+        Environment=DATASTORE_TYPE=kubernetes
         Type=oneshot
         ExecStart=/opt/bin/kubectl create -f https://docs.projectcalico.org/manifests/tigera-operator.yaml
         ExecStart=/opt/bin/kubectl create -f /etc/resources/calico.yaml
@@ -24,16 +25,6 @@ systemd:
         # ExecStart=/opt/bin/calicoctl create -f /etc/resources/bgppeering.yaml
 storage:
   files:
-    - path: "/opt/bin/calicoctl"
-      mode: 755
-      contents:
-        remote:
-          url: ${CALICOCTL_URL}
-          verification:
-            hash:
-              function: sha512
-              sum: "${CALICOCTL_HASH}"
-
     - path: "/etc/resources/calico.yaml"
       contents:
         inline: |

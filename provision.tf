@@ -40,6 +40,8 @@ locals {
     KUBELET_HASH   = local.KUBELET_HASH
     KUBECTL_URL    = local.KUBECTL_URL
     KUBECTL_HASH   = local.KUBECTL_HASH
+    CALICOCTL_URL      = local.KUBECTL_URL
+    CALICOCTL_HASH     = local.KUBECTL_HASH
   })
 
 }
@@ -77,8 +79,6 @@ data "ct_config" "master" {
       # node_ip = packet_device.master.access_public_ipv6
       pod_cidr_range     = local.pod_cidr_range
       service_cidr_range = local.service_cidr_range
-      CALICOCTL_URL      = local.KUBECTL_URL
-      CALICOCTL_HASH     = local.KUBECTL_HASH
     })
   ]
 }
