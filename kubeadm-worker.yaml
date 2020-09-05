@@ -4,9 +4,9 @@ systemd:
       enabled: true
       contents: |
         [Unit]
+        ConditionPathExists=!/etc/kubernetes/kubelet.conf
         StartLimitInterval=1200s
         StartLimitBurst=5
-        ConditionPathExists=!/etc/kubernetes/kubelet.conf
         [Service]
         Environment=PATH=/usr/bin:/usr/sbin:/opt/bin
         Type=oneshot

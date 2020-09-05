@@ -16,6 +16,7 @@ systemd:
         [Install]
         WantedBy=multi-user.target
     - name: install-calico.service
+      enabled: true
       contents: |
         [Unit]
         After=kubeadm-init.service
@@ -26,7 +27,8 @@ systemd:
         ExecStart=/opt/bin/kubectl create -f https://docs.projectcalico.org/manifests/tigera-operator.yaml
         ExecStart=/opt/bin/kubectl create -f /etc/resources/calico.yaml
         ExecStart=/opt/bin/calicoctl create -f /etc/resources/bgpconfig.yaml
-        # ExecStart=/opt/bin/calicoctl create -f /etc/resources/bgppeering.yaml
+        [Install]
+        WantedBy=multi-user.target
 storage:
   files:
     - path: "/etc/kubeadm/config.yaml.tpl"
