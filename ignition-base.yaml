@@ -1,0 +1,72 @@
+networkd:
+  units:
+    - name: 05-bond0.network
+      dropins:
+        - name: 00-forwarding.conf
+          contents: |
+            [Network]
+            IPForward=ipv6
+        # TODO: I expected this to _override_ DNS but currently it does not.
+        # See https://github.com/systemd/systemd/issues/16959
+        - name: 01-dns.conf
+          contents: |
+            [Network]
+            DNS=
+            DNS=2001:4860:4860::8888
+            DNS=2001:4860:4860::8844
+
+systemd:
+  units:
+    - name: kubelet.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=kubelet: The Kubernetes Node Agent
+        Documentation=https://kubernetes.io/docs/home/
+        Wants=network-online.target
+        After=network-online.target
+
+        [Service]
+        Environment="KUBELET_KUBECONFIG_ARGS=--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf --kubeconfig=/etc/kubernetes/kubelet.conf"
+        Environment="KUBELET_CONFIG_ARGS=--config=/var/lib/kubelet/config.yaml"
+        # This is a file that "kubeadm init" and "kubeadm join" generates at runtime, populating the KUBELET_KUBEADM_ARGS variable dynamically
+        EnvironmentFile=-/var/lib/kubelet/kubeadm-flags.env
+        ExecStart=/opt/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS
+        Restart=always
+        StartLimitInterval=0
+        RestartSec=10
+
+        [Install]
+        WantedBy=multi-user.target
+storage:
+  directories:
+    - path: /opt/bin
+    - path: /opt/cni/bin
+  files:
+    - path: "/opt/bin/kubeadm"
+      mode: 755
+      contents:
+        remote:
+          url: ${KUBEADM_URL}
+          verification:
+            hash:
+              function: sha512
+              sum: "${KUBEADM_HASH}"
+    - path: "/opt/bin/kubelet"
+      mode: 755
+      contents:
+        remote:
+          url: ${KUBELET_URL}
+          verification:
+            hash:
+              function: sha512
+              sum: ${KUBELET_HASH}
+    - path: "/opt/bin/kubectl"
+      mode: 755
+      contents:
+        remote:
+          url: ${KUBECTL_URL}
+          verification:
+            hash:
+              function: sha512
+              sum: ${KUBECTL_HASH}

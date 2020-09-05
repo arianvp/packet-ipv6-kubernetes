@@ -1,0 +1,62 @@
+systemd:
+  units:
+    - name: kubeadm.service
+      contents: |
+        [Unit]
+        After=coreos-metadata.service
+        Requires=coreos-metadata.service
+        [Service]
+        EnvironmentFile=/run/metadata/coreos
+        Environment=PATH=/usr/bin:/usr/sbin:/opt/bin
+        Type=oneshot
+        ExecStartPre=/bin/sh -c 'cat /etc/kubeadm/config.yaml.tpl | envsubst > /etc/kubeadm/config.yaml'
+        ExecStart=/opt/bin/kubeadm init --config /etc/kubeadm/config.yaml
+    - name: install-calico.service
+      contents: |
+        [Unit]
+        After=kubeadm.service
+        [Service]
+        Environment=KUBECONFIG=/etc/kubernetes/admin.conf
+        Type=oneshot
+        ExecStart=/opt/bin/kubectl create -f https://docs.projectcalico.org/manifests/tigera-operator.yaml
+        ExecStart=/opt/bin/kubectl create -f /etc/resources/calico.yaml
+storage:
+  files:
+    - path: "/etc/resources/calico.yaml"
+      contents:
+        inline: |
+          ---
+          apiVersion: operator.tigera.io/v1
+          kind: Installation
+          metadata:
+            name: default
+          spec:
+            calicoNetwork:
+              nodeAddressAutodetectionV4: {}
+              nodeAddressAutodetectionV6:
+                interface: bond0
+            flexVolumePath: "/opt/libexec/kubernetes/kubelet-plugins/volume/exec/"
+    - path: "/etc/kubeadm/config.yaml.tpl"
+      contents:
+        inline: |
+          ---
+          apiVersion: kubeadm.k8s.io/v1beta2
+          kind: InitConfiguration
+          localAPIEndpoint:
+            advertiseAddress: "::"
+          nodeRegistration:
+            taints: []  # control-plane should allow jobs
+            kubeletExtraArgs:
+              volume-plugin-dir: "/opt/libexec/kubernetes/kubelet-plugins/volume/exec/"
+              # needed; otherwise kube-proxy will not come up
+              # Kubernetes just takes the first IP it sees; which is the wrong one :)
+              node-ip: $${COREOS_PACKET_IPV6_PUBLIC_0}
+          ---
+          apiVersion: kubeadm.k8s.io/v1beta2
+          kind: ClusterConfiguration
+          controllerManager:
+            extraArgs:
+              flex-volume-plugin-dir: "/opt/libexec/kubernetes/kubelet-plugins/volume/exec/"
+          networking:
+            serviceSubnet: "${service_cidr_range}"
+            podSubnet: "${pod_cidr_range}"
