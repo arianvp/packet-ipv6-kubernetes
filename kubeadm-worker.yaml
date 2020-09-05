@@ -1,0 +1,17 @@
+systemd:
+  units:
+    - name: kubeadm-join.service
+      enabled: true
+      contents: |
+        [Unit]
+        StartLimitInterval=1200s
+        StartLimitBurst=5
+        ConditionPathExists=!/etc/kubernetes/kubelet.conf
+        [Service]
+        Environment=PATH=/usr/bin:/usr/sbin:/opt/bin
+        Type=oneshot
+        ExecStart=${worker_join_command}
+        Restart=on-failure
+        RestartSec=120s
+        [Install]
+        WantedBy=multi-user.target

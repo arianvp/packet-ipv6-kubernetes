@@ -1,13 +1,24 @@
+variable "kubeadm_token" {
+  type        = string
+  description = "The token use for bootstrapping the kubernetes cluster.\nGenerate with: \n$ kubeadm token generate"
+}
+
+variable "kubeadm_certificate_key" {
+  type        = string
+  description = "The key used to encrypt the control-plane certificates.\nGenerate with: \n$ kubeadm alpha certs certificate-key\n"
+}
 
 locals {
-  worker_count        = 1
   pod_cidr_range      = cidrsubnet(data.packet_precreated_ip_block.addresses.cidr_notation, 8, 1)
   service_cidr_range_ = cidrsubnet(data.packet_precreated_ip_block.addresses.cidr_notation, 8, 2)
-  external_cidr_range = cidrsubnet(data.packet_precreated_ip_block.addresses.cidr_notation, 8, 3)
-
   # NOTE: subnet size for services in kubernetes can only be 20 bits in size;
   # hence allocate a smaller block in the larger /64 block
-  service_cidr_range = cidrsubnet(local.service_cidr_range_, 44, 0)
+  service_cidr_range  = cidrsubnet(local.service_cidr_range_, 44, 0)
+  external_cidr_range = cidrsubnet(data.packet_precreated_ip_block.addresses.cidr_notation, 8, 3)
+
+  worker_join_command = "/opt/bin/kubeadm join ${local.apiserver_domain}:443 --token ${var.kubeadm_token} --discovery-token-unsafe-skip-ca-verification"
+  master_join_command = "${local.worker_join_command} --control-plane --certificate-key ${var.kubeadm_certificate_key}"
+
 
   # NOTE: We're in IPv6 land! Everything is public by default. So we can simply
   # connect to the kubernetes API server through its service_ip! This is by
@@ -16,6 +27,8 @@ locals {
   apiserver_cluster_ip = cidrhost(local.service_cidr_range, 1)
 
   apiserver_domain = "kube.arianvp.me"
+
+  packet_asn = 65530 # NOTE: this wasn't actually documented anywhere? I found it "somewhere"
 
   K8S_VERSION  = "v1.19.0"
   KUBEADM_URL  = "https://storage.googleapis.com/kubernetes-release/release/${local.K8S_VERSION}/bin/linux/amd64/kubeadm"
@@ -38,8 +51,9 @@ locals {
     KUBELET_HASH   = local.KUBELET_HASH
     KUBECTL_URL    = local.KUBECTL_URL
     KUBECTL_HASH   = local.KUBECTL_HASH
-    CALICOCTL_URL  = local.KUBECTL_URL
-    CALICOCTL_HASH = local.KUBECTL_HASH
+    CALICOCTL_URL  = local.CALICOCTL_URL
+    CALICOCTL_HASH = local.CALICOCTL_HASH
+    packet_asn     = local.packet_asn
   })
 
 }
@@ -53,8 +67,6 @@ resource "digitalocean_record" "arianvp" {
   domain = data.digitalocean_domain.arianvp.name
   type   = "AAAA"
   name   = "kube"
-  value  = packet_device.master.access_public_ipv6
-
   # TODO: UNCOMMENT THE FOLLOWING LINE AFTER THE FIRST MASTER NODER IS ONLINE
   # Once Calico has been initialised, it will expose the kube-apiserver
   # ClusterIP over BGP which wil load-balance between all the apiservers
@@ -65,9 +77,8 @@ resource "digitalocean_record" "arianvp" {
   # have to swap the value to point to the ClusterIP instead
 
   # value = local.apiserver_cluster_ip
+  value = packet_device.master.access_public_ipv6
 }
-
-
 
 # This is a pre-existing project, where I create and delete a device, such that
 # the
@@ -103,6 +114,8 @@ data "ct_config" "master" {
       pod_cidr_range         = local.pod_cidr_range
       service_cidr_range     = local.service_cidr_range
       external_cidr_range    = local.external_cidr_range
+      certificate_key        = var.kubeadm_certificate_key
+      token                  = var.kubeadm_token
       control_plane_endpoint = "kube.arianvp.me"
     })
   ]
@@ -114,8 +127,8 @@ resource "packet_bgp_session" "master" {
 }
 
 resource "packet_device" "worker" {
+  count            = 1
   depends_on       = [packet_device.master]
-  count            = local.worker_count
   hostname         = "worker${count.index}"
   plan             = "t1.small.x86"
   facilities       = ["ams1"]
@@ -127,10 +140,15 @@ resource "packet_device" "worker" {
 
 data "ct_config" "worker" {
   content = local.ignition_base
+  snippets = [
+    templatefile("./kubeadm-worker.yaml", {
+      worker_join_command = local.worker_join_command
+    })
+  ]
 }
 
 resource "packet_bgp_session" "worker" {
-  count          = local.worker_count
+  count          = length(packet_device.worker)
   device_id      = packet_device.worker[count.index].id
   address_family = "ipv6"
 }
@@ -150,6 +168,3 @@ output "service_cidr_range" {
 output "pod_cidr_range" {
   value = local.pod_cidr_range
 }
-
-
-

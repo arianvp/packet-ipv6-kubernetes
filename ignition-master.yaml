@@ -1,8 +1,10 @@
 systemd:
   units:
     - name: kubeadm.service
+      enabled: true
       contents: |
         [Unit]
+        ConditionPathExists=!/etc/kubernetes/manifests/kube-apiserver.yaml
         After=coreos-metadata.service
         Requires=coreos-metadata.service
         [Service]
@@ -11,10 +13,12 @@ systemd:
         Type=oneshot
         ExecStartPre=/bin/sh -c 'cat /etc/kubeadm/config.yaml.tpl | envsubst > /etc/kubeadm/config.yaml'
         ExecStart=/opt/bin/kubeadm init --config /etc/kubeadm/config.yaml --upload-certs
+        [Install]
+        WantedBy=multi-user.target
     - name: install-calico.service
       contents: |
         [Unit]
-        After=kubeadm.service
+        After=kubeadm-init.service
         [Service]
         Environment=KUBECONFIG=/etc/kubernetes/admin.conf
         Environment=DATASTORE_TYPE=kubernetes
@@ -31,15 +35,19 @@ storage:
           ---
           apiVersion: kubeadm.k8s.io/v1beta2
           kind: InitConfiguration
+          bootstrapTokens:
+            - token: "${token}"
+          certificateKey: "${certificate_key}"
           localAPIEndpoint:
             advertiseAddress: "::"
+            bindPort: 443
           nodeRegistration:
             taints: []  # control-plane should allow jobs
             kubeletExtraArgs:
               volume-plugin-dir: "/opt/libexec/kubernetes/kubelet-plugins/volume/exec/"
               # needed; otherwise kube-proxy will not come up
               # Kubernetes just takes the first IP it sees; which is the wrong one :)
-              node-ip: $${COREOS_PACKET_IPV6_PUBLIC_0}
+              node-ip: "$${COREOS_PACKET_IPV6_PUBLIC_0}"
           ---
           apiVersion: kubeadm.k8s.io/v1beta2
           kind: ClusterConfiguration

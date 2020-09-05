@@ -14,7 +14,6 @@ networkd:
             DNS=
             DNS=2001:4860:4860::8888
             DNS=2001:4860:4860::8844
-
 systemd:
   units:
     - name: kubelet.service
