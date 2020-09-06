@@ -2,3 +2,4 @@ terraform.tfstate*
 .terraform
 .vscode
 .direnv
+admin.conf
