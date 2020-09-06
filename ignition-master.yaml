@@ -1,36 +1,52 @@
 systemd:
   units:
+    - name: coreos-metadata.service
+      dropins:
+        # coreos-metdata.service by default doesn't expose the default gateway;
+        # so we extend it to do so We need this to set up BGP Peering for the
+        # master node
+        - name: 00-gateway.conf
+          contents: |
+            [Service]
+            ExecStart=/bin/sh -c 'echo "COREOS_PACKET_IPV6_GATEWAY=$(curl https://metadata.packet.net/metadata | jq -r \'.network.addresses[] | select(.address_family == 6) | .gateway\')" >> /run/metadata/flatcar'
     - name: kubeadm.service
-      enabled: true
+      enabled: true  # We manually start it in terraform for bootstrap reasons
       contents: |
         [Unit]
-        ConditionPathExists=!/etc/kubernetes/manifests/kube-apiserver.yaml
+        ConditionPathExists=!/etc/kubernetes/kubelet.conf
         After=coreos-metadata.service
         Requires=coreos-metadata.service
         [Service]
         EnvironmentFile=/run/metadata/coreos
         Environment=PATH=/usr/bin:/usr/sbin:/opt/bin
-        Type=oneshot
-        ExecStartPre=/bin/sh -c 'cat /etc/kubeadm/config.yaml.tpl | envsubst > /etc/kubeadm/config.yaml'
-        ExecStart=/opt/bin/kubeadm init --config /etc/kubeadm/config.yaml --upload-certs
-        [Install]
-        WantedBy=multi-user.target
-    - name: install-calico.service
-      enabled: true
-      contents: |
-        [Unit]
-        After=kubeadm.service
-        [Service]
         Environment=KUBECONFIG=/etc/kubernetes/admin.conf
         Environment=DATASTORE_TYPE=kubernetes
         Type=oneshot
+        ExecStart=/bin/sh -c 'cat /etc/kubeadm/config.yaml.tpl | envsubst > /etc/kubeadm/config.yaml'
+        ExecStart=/opt/bin/kubeadm init --config /etc/kubeadm/config.yaml --upload-certs
+        
+        ExecStart=/usr/bin/sudo -i core mkdir -p /home/core/.kube
+        ExecStart=/usr/bin/cp /etc/kubernetes/admin.conf /home/core/.kube/config
+        EcecStart=/usr/bin/chown core:core /home/core/.kube/config
+
+        ExecStart=/bin/sh -c 'cat /etc/resources/bgppeer.yaml.tpl | envsubst > /etc/resources/bgppeer.yaml'
         ExecStart=/opt/bin/kubectl create -f https://docs.projectcalico.org/manifests/tigera-operator.yaml
         ExecStart=/opt/bin/kubectl create -f /etc/resources/calico.yaml
         ExecStart=/opt/bin/calicoctl create -f /etc/resources/bgpconfig.yaml
+        ExecStart=/opt/bin/calicoctl create -f /etc/resources/bgppeer.yaml
         [Install]
         WantedBy=multi-user.target
 storage:
   files:
+    # ${control_plane_endpoint} refers to a domain name that might not be up
+    # yet during bootstrap hence we trick master in contacting itself
+    # Especially in cases where we set ${control_plane_endpoint} to a
+    # kubernetes ClusterIP that is advertised by calico directly, it is useful
+    # to do this
+    - path: "/etc/hosts"
+      append: true
+      contents:
+         inline: "::1 ${control_plane_endpoint}"
     - path: "/etc/kubeadm/config.yaml.tpl"
       contents:
         inline: |
@@ -44,7 +60,7 @@ storage:
             advertiseAddress: "::"
             bindPort: 443
           nodeRegistration:
-            taints: []  # control-plane should allow jobs
+            # taints: []  # control-plane should allow jobs
             kubeletExtraArgs:
               volume-plugin-dir: "/opt/libexec/kubernetes/kubelet-plugins/volume/exec/"
               # needed; otherwise kube-proxy will not come up
@@ -53,7 +69,7 @@ storage:
           ---
           apiVersion: kubeadm.k8s.io/v1beta2
           kind: ClusterConfiguration
-          controlPlaneEndpoint: "${control_plane_endpoint}"
+          controlPlaneEndpoint: "${control_plane_endpoint}:443"
           controllerManager:
             extraArgs:
               flex-volume-plugin-dir: "/opt/libexec/kubernetes/kubelet-plugins/volume/exec/"
@@ -91,3 +107,14 @@ storage:
               - cidr: "${service_cidr_range}"
             serviceExternalIPs:
               - cidr: "${external_cidr_range}"
+    - path: "/etc/resources/bgppeer.yaml.tpl"
+      contents:
+        inline: |
+          apiVersion: projectcalico.org/v3
+          kind: BGPPeer
+          metadata:
+            name: $${COREOS_PACKET_HOSTNAME}
+          spec:
+            peerIP: $${COREOS_PACKET_IPV6_GATEWAY}
+            asNumber: 65530
+            node: $${COREOS_PACKET_HOSTNAME}

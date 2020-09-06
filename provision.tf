@@ -9,8 +9,10 @@ variable "kubeadm_certificate_key" {
 }
 
 locals {
-  pod_cidr_range      = cidrsubnet(data.packet_precreated_ip_block.addresses.cidr_notation, 8, 1)
-  service_cidr_range_ = cidrsubnet(data.packet_precreated_ip_block.addresses.cidr_notation, 8, 2)
+  worker_count            = 1
+  additional_master_count = 2
+  pod_cidr_range          = cidrsubnet(data.packet_precreated_ip_block.addresses.cidr_notation, 8, 1)
+  service_cidr_range_     = cidrsubnet(data.packet_precreated_ip_block.addresses.cidr_notation, 8, 2)
   # NOTE: subnet size for services in kubernetes can only be 20 bits in size;
   # hence allocate a smaller block in the larger /64 block
   service_cidr_range  = cidrsubnet(local.service_cidr_range_, 44, 0)
@@ -22,9 +24,9 @@ locals {
   # a multi-master setup :)
   apiserver_cluster_ip = cidrhost(local.service_cidr_range, 1)
 
-  subdomain = "kube2"
-  basedomain = "arianvp.me"
-  control_plane_endpoint = "${local.subdomain}.${local.basedomain}:443"
+  subdomain              = "kube2"
+  basedomain             = "arianvp.me"
+  control_plane_endpoint = "${local.subdomain}.${local.basedomain}"
 
   packet_asn = 65530 # NOTE: this wasn't actually documented anywhere? I found it "somewhere"
 
@@ -75,8 +77,8 @@ resource "digitalocean_record" "arianvp" {
   # to a single master node; and once that master node is bootstrapped, we will
   # have to swap the value to point to the ClusterIP instead
 
-  # value = local.apiserver_cluster_ip
-  value = packet_device.master.access_public_ipv6
+  value = local.apiserver_cluster_ip
+  # value = packet_device.master.access_public_ipv6
 }
 
 # This is a pre-existing project, where I create and delete a device, such that
@@ -126,7 +128,7 @@ resource "packet_bgp_session" "master" {
 }
 
 resource "packet_device" "worker" {
-  count            = 2
+  count            = local.worker_count
   hostname         = "worker${count.index}"
   plan             = "t1.small.x86"
   facilities       = ["ams1"]
@@ -139,31 +141,52 @@ resource "packet_device" "worker" {
 data "ct_config" "worker" {
   content = local.ignition_base
   snippets = [
-    templatefile("./kubeadm-worker.yaml", {
+    templatefile("./kubeadm-node.yaml", {
       token                  = var.kubeadm_token
       control_plane_endpoint = local.control_plane_endpoint
+      certificate_key        = null
     })
   ]
 }
 
 resource "packet_bgp_session" "worker" {
-  count          = length(packet_device.worker)
+  count          = local.additional_master_count
   device_id      = packet_device.worker[count.index].id
   address_family = "ipv6"
 }
 
-output "master_ipv6" {
-  value = packet_device.master.access_public_ipv6
+resource "packet_device" "additional_master" {
+  count            = local.additional_master_count
+  hostname         = "additionalmaster${count.index}"
+  plan             = "t1.small.x86"
+  facilities       = ["ams1"]
+  operating_system = "flatcar_alpha"
+  billing_cycle    = "hourly"
+  project_id       = data.packet_project.kubernetes.id
+  user_data        = data.ct_config.additional_master.rendered
 }
 
-output "master_ipv4" {
-  value = packet_device.master.access_public_ipv4
+data "ct_config" "additional_master" {
+  content = local.ignition_base
+  snippets = [
+    templatefile("./kubeadm-node.yaml", {
+      token                  = var.kubeadm_token
+      control_plane_endpoint = local.control_plane_endpoint
+      certificate_key        = var.kubeadm_certificate_key
+    })
+  ]
 }
 
-output "service_cidr_range" {
-  value = local.service_cidr_range
+resource "packet_bgp_session" "additional_master" {
+  count          = local.worker_count
+  device_id      = packet_device.additional_master[count.index].id
+  address_family = "ipv6"
 }
 
-output "pod_cidr_range" {
-  value = local.pod_cidr_range
+output "calico_bgp_peers" {
+  description = "A calico manifest describing the topology of the cluster. You should apply this to thhe cluster to set up all the needed routes."
+  value = templatefile("bgppeer.yaml.tpl", {
+    workers = packet_device.worker
+    master  = packet_device.master
+  })
 }

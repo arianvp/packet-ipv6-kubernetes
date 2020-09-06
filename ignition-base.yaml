@@ -16,6 +16,11 @@ networkd:
             DNS=2001:4860:4860::8844
 systemd:
   units:
+    # We'll install https://github.com/kinvolk/flatcar-linux-update-operator for updates instead
+    - name: locksmithd.service
+      mask: true
+    - name: update-engine.service
+      enabled: true
     - name: kubelet.service
       enabled: true
       contents: |
