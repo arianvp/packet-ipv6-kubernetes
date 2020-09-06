@@ -36,5 +36,5 @@ storage:
           discovery:
             bootstrapToken:
               token: "${token}"
-              apiServerEndpoint: "${control_plane_endpoint}i:443"
+              apiServerEndpoint: "${control_plane_endpoint}"
               unsafeSkipCAVerification: true

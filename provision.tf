@@ -22,7 +22,9 @@ locals {
   # a multi-master setup :)
   apiserver_cluster_ip = cidrhost(local.service_cidr_range, 1)
 
-  control_plane_endpoint = "kube.arianvp.me"
+  subdomain = "kube2"
+  basedomain = "arianvp.me"
+  control_plane_endpoint = "${local.subdomain}.${local.basedomain}:443"
 
   packet_asn = 65530 # NOTE: this wasn't actually documented anywhere? I found it "somewhere"
 
@@ -55,14 +57,15 @@ locals {
 }
 
 data "digitalocean_domain" "arianvp" {
-  name = "arianvp.me"
+  name = local.basedomain
 }
 
 
 resource "digitalocean_record" "arianvp" {
   domain = data.digitalocean_domain.arianvp.name
   type   = "AAAA"
-  name   = "kube"
+  name   = local.subdomain
+  ttl    = "60"
   # TODO: UNCOMMENT THE FOLLOWING LINE AFTER THE FIRST MASTER NODER IS ONLINE
   # Once Calico has been initialised, it will expose the kube-apiserver
   # ClusterIP over BGP which wil load-balance between all the apiservers
@@ -124,7 +127,6 @@ resource "packet_bgp_session" "master" {
 
 resource "packet_device" "worker" {
   count            = 2
-  depends_on       = [packet_device.master]
   hostname         = "worker${count.index}"
   plan             = "t1.small.x86"
   facilities       = ["ams1"]
