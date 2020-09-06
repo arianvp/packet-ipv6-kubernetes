@@ -9,8 +9,8 @@ variable "kubeadm_certificate_key" {
 }
 
 locals {
-  worker_count            = 1
-  additional_master_count = 2
+  worker_count            = 0
+  additional_master_count = 0
   pod_cidr_range          = cidrsubnet(data.packet_precreated_ip_block.addresses.cidr_notation, 8, 1)
   service_cidr_range_     = cidrsubnet(data.packet_precreated_ip_block.addresses.cidr_notation, 8, 2)
   # NOTE: subnet size for services in kubernetes can only be 20 bits in size;
