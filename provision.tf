@@ -9,7 +9,7 @@ variable "kubeadm_certificate_key" {
 }
 
 locals {
-  worker_count            = 0
+  worker_count            = 1
   additional_master_count = 0
   pod_cidr_range          = cidrsubnet(data.packet_precreated_ip_block.addresses.cidr_notation, 8, 1)
   service_cidr_range_     = cidrsubnet(data.packet_precreated_ip_block.addresses.cidr_notation, 8, 2)
@@ -178,7 +178,7 @@ data "ct_config" "additional_master" {
 }
 
 resource "packet_bgp_session" "additional_master" {
-  count          = local.worker_count
+  count          = local.additional_master_count
   device_id      = packet_device.additional_master[count.index].id
   address_family = "ipv6"
 }
