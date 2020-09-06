@@ -8,9 +8,7 @@ if [ ! -f ./admin.conf ]; then
   scp core@[$(terraform output master_ipv6)]:.kube/config ./admin.conf || echo "Master node didn't come up yet. Try again in a bit"
 fi
 
-if [ ! -z $(terraform output calico_bgp_peers) ]; then
-  echo "Applying bgp peers..."
-  terraform output calico_bgp_peers | calicoctl apply -f -
-fi
+echo "Applying bgp peers..."
+terraform output calico_bgp_peers | calicoctl apply -f -
 
 

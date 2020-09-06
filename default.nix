@@ -13,6 +13,19 @@ let
       install -Dm0755 kubectl -t $out/bin
     '';
   };
+  kubeadm = pkgs.stdenv.mkDerivation {
+    name = "kubeadm";
+    src = pkgs.fetchurl {
+      url = "https://storage.googleapis.com/kubernetes-release/release/v1.19.0/bin/linux/amd64/kubeadm";
+      sha256 = "17v5v08f3j3vzcqhgmrkiag82ak4zbjbkakrwvv4g21d632pvkl8";
+    };
+    dontUnpack = true;
+    dontBuild = true;
+    installPhase = ''
+      cp $src kubeadm
+      install -Dm0755 kubeadm -t $out/bin
+    '';
+  };
   calicoctl = pkgs.stdenv.mkDerivation {
     name = "calicoctl";
     src = pkgs.fetchurl {
@@ -29,5 +42,5 @@ let
 in
 pkgs.mkShell {
   name = "packet-kubernetes";
-  buildInputs = [ pkgs.terraform_0_13 kubectl calicoctl ];
+  buildInputs = [ pkgs.terraform_0_13 kubectl kubeadm calicoctl ];
 }

@@ -38,15 +38,6 @@ systemd:
         WantedBy=multi-user.target
 storage:
   files:
-    # ${control_plane_endpoint} refers to a domain name that might not be up
-    # yet during bootstrap hence we trick master in contacting itself
-    # Especially in cases where we set ${control_plane_endpoint} to a
-    # kubernetes ClusterIP that is advertised by calico directly, it is useful
-    # to do this
-    - path: "/etc/hosts"
-      append: true
-      contents:
-         inline: "::1 ${control_plane_endpoint}"
     - path: "/etc/kubeadm/config.yaml.tpl"
       contents:
         inline: |

@@ -9,8 +9,7 @@ variable "kubeadm_certificate_key" {
 }
 
 locals {
-  worker_count            = 0
-  additional_master_count = 0
+  worker_count            = 2
   pod_cidr_range          = cidrsubnet(data.packet_precreated_ip_block.addresses.cidr_notation, 8, 1)
   service_cidr_range_     = cidrsubnet(data.packet_precreated_ip_block.addresses.cidr_notation, 8, 2)
   # NOTE: subnet size for services in kubernetes can only be 20 bits in size;
@@ -22,7 +21,7 @@ locals {
   # connect to the kubernetes API server through its service_ip! This is by
   # convention always the first IP in the block. We can use this in kubeadm for
   # a multi-master setup :)
-  apiserver_cluster_ip = cidrhost(local.service_cidr_range, 1)
+  apiserver_external_ip = cidrhost(local.external_cidr_range, 1)
 
   subdomain              = "kube2"
   basedomain             = "arianvp.me"
@@ -77,8 +76,8 @@ resource "digitalocean_record" "arianvp" {
   # to a single master node; and once that master node is bootstrapped, we will
   # have to swap the value to point to the ClusterIP instead
 
-  value = local.apiserver_cluster_ip
-  # value = packet_device.master.access_public_ipv6
+  # value = local.apiserver_external_ip
+  value = packet_device.master.access_public_ipv6
 }
 
 # This is a pre-existing project, where I create and delete a device, such that
@@ -155,34 +154,6 @@ resource "packet_bgp_session" "worker" {
   address_family = "ipv6"
 }
 
-resource "packet_device" "additional_master" {
-  count            = local.additional_master_count
-  hostname         = "additionalmaster${count.index}"
-  plan             = "t1.small.x86"
-  facilities       = ["ams1"]
-  operating_system = "flatcar_alpha"
-  billing_cycle    = "hourly"
-  project_id       = data.packet_project.kubernetes.id
-  user_data        = data.ct_config.additional_master.rendered
-}
-
-data "ct_config" "additional_master" {
-  content = local.ignition_base
-  snippets = [
-    templatefile("./kubeadm-node.yaml", {
-      token                  = var.kubeadm_token
-      control_plane_endpoint = local.control_plane_endpoint
-      certificate_key        = var.kubeadm_certificate_key
-    })
-  ]
-}
-
-resource "packet_bgp_session" "additional_master" {
-  count          = local.additional_master_count
-  device_id      = packet_device.additional_master[count.index].id
-  address_family = "ipv6"
-}
-
 output "master_ipv4" {
   value = packet_device.master.access_public_ipv4
 }
@@ -195,6 +166,5 @@ output "calico_bgp_peers" {
   description = "A calico manifest describing the topology of the cluster. You should apply this to thhe cluster to set up all the needed routes."
   value = templatefile("bgppeer.yaml.tpl", {
     workers            = packet_device.worker
-    additional_masters = packet_device.additional_master
   })
 }

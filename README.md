@@ -31,7 +31,7 @@ the things that _should_ talk to eachother _can_ talk to eachother.
 * Pod network is flat. all pods should reach eachother without NAT
 * pod cidr != node cidr != service cidr
 * Overlay networks (usually; but not neccessarily; E.g. GCP sets up routes directly for pods)
-* Pod network usually a private range. 
+* Pod network usually a private range.
 ![vxlan](https://docs.projectcalico.org/images/anatomy-of-an-overlay-packet.svg)
 * What if each pod just got a public ip address? => No need for overlays
 * Very possible with IPv6   (Packet gives you a /56)
@@ -44,14 +44,13 @@ the things that _should_ talk to eachother _can_ talk to eachother.
 
 ## Advertising ClusterIPs
 * We can directly advertise kubernetes services using BGP too!
+* Will use ECMP routing to loadbalance between nodes. So highly available LB
 * Just make sure that the ip range is also a public ipv6 range
 * No need for external load-balancer; or metallb, or whatever! All services are
   reachable through public IP Address
 
-## Multi-master kubernetes without external loadbalancer
-* Each cluster has exposes the `kubernetes.svc.cluster.local` service to access the apiserver
-* With IPv6 this means we get an external load-balancer for our apiserver for free! Each service _is_ an external loadbalancer
-* This means we can set up multi-master kubernetes easily! 
+## externalTrafficPolicy: Local vs Cluster
+* Show what it means for routes
 
 ## bbbbut What about security?! (Out of scope probably due to time constraints!)
 
