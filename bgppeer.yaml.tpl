@@ -5,11 +5,11 @@
 apiVersion: projectcalico.org/v3
 kind: BGPPeer
 metadata:
-  name: ${device.hostname}
+  name: "${device.hostname}"
 spec:
-  peerIP: ${network.gateway}
+  peerIP: "${network.gateway}"
   asNumber: 65530
-  node: ${device.hostname}
+  node: "${device.hostname}"
 %{ endif ~}
 %{ endfor ~}
 %{ endfor ~}
@@ -22,9 +22,9 @@ kind: BGPPeer
 metadata:
   name: ${device.hostname}
 spec:
-  peerIP: ${network.gateway}
+  peerIP: "${network.gateway}"
   asNumber: 65530
-  node: ${device.hostname}
+  node: "${device.hostname}"
 %{ endif ~}
 %{ endfor ~}
 %{ endfor ~}

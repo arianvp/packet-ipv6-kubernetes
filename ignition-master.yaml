@@ -25,9 +25,9 @@ systemd:
         ExecStart=/bin/sh -c 'cat /etc/kubeadm/config.yaml.tpl | envsubst > /etc/kubeadm/config.yaml'
         ExecStart=/opt/bin/kubeadm init --config /etc/kubeadm/config.yaml --upload-certs
         
-        ExecStart=/usr/bin/sudo -i core mkdir -p /home/core/.kube
+        ExecStart=/usr/bin/sudo -u core mkdir -p /home/core/.kube
         ExecStart=/usr/bin/cp /etc/kubernetes/admin.conf /home/core/.kube/config
-        EcecStart=/usr/bin/chown core:core /home/core/.kube/config
+        ExecStart=/usr/bin/chown core:core /home/core/.kube/config
 
         ExecStart=/bin/sh -c 'cat /etc/resources/bgppeer.yaml.tpl | envsubst > /etc/resources/bgppeer.yaml'
         ExecStart=/opt/bin/kubectl create -f https://docs.projectcalico.org/manifests/tigera-operator.yaml
@@ -113,8 +113,8 @@ storage:
           apiVersion: projectcalico.org/v3
           kind: BGPPeer
           metadata:
-            name: $${COREOS_PACKET_HOSTNAME}
+            name: "$${COREOS_PACKET_HOSTNAME}"
           spec:
-            peerIP: $${COREOS_PACKET_IPV6_GATEWAY}
+            peerIP: "$${COREOS_PACKET_IPV6_GATEWAY}"
             asNumber: 65530
-            node: $${COREOS_PACKET_HOSTNAME}
+            node: "$${COREOS_PACKET_HOSTNAME}"
