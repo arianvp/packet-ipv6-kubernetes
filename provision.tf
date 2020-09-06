@@ -186,7 +186,7 @@ resource "packet_bgp_session" "additional_master" {
 output "calico_bgp_peers" {
   description = "A calico manifest describing the topology of the cluster. You should apply this to thhe cluster to set up all the needed routes."
   value = templatefile("bgppeer.yaml.tpl", {
-    workers = packet_device.worker
-    master  = packet_device.master
+    workers            = packet_device.worker
+    additional_masters = packet_device.additional_masters
   })
 }

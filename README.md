@@ -23,6 +23,8 @@ the things that _should_ talk to eachother _can_ talk to eachother.
 
 # Stream notes
 
+## Packet, pods, ipv6
+
 ![packet](https://docs.projectcalico.org/images/anatomy-of-a-packet.svg)
 
 
@@ -38,4 +40,27 @@ the things that _should_ talk to eachother _can_ talk to eachother.
 *  https://docs.projectcalico.org/reference/architecture/design/l3-interconnect-fabric
 * _downward default_ network
 ![downward](https://docs.projectcalico.org/images/l3-fabric-downward-default.png)
+
+
+## Advertising ClusterIPs
+* We can directly advertise kubernetes services using BGP too!
+* Just make sure that the ip range is also a public ipv6 range
+* No need for external load-balancer; or metallb, or whatever! All services are
+  reachable through public IP Address
+
+## Multi-master kubernetes without external loadbalancer
+* Each cluster has exposes the `kubernetes.svc.cluster.local` service to access the apiserver
+* With IPv6 this means we get an external load-balancer for our apiserver for free! Each service _is_ an external loadbalancer
+* This means we can set up multi-master kubernetes easily! 
+
+## bbbbut What about security?! (Out of scope probably due to time constraints!)
+
+* Overlay networks and NAT give a false sense of security. This is what IPv6 advocates yell all day
+* Instead, we want fine-grained routing policies that tell which pods and reach what services, and what services are publically reachable
+* We can define Kubernetes NetworkPolicies for this! https://kubernetes.io/docs/concepts/services-networking/network-policies/
+* _Zero Trust networks_ https://docs.projectcalico.org/security/adopt-zero-trust
+* Service Mesh like Istio
+
+## Whats next - Security
+
 
