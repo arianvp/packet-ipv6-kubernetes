@@ -10,7 +10,7 @@ variable "kubeadm_certificate_key" {
 
 locals {
   worker_count            = 1
-  additional_master_count = 0
+  additional_master_count = 2
   pod_cidr_range          = cidrsubnet(data.packet_precreated_ip_block.addresses.cidr_notation, 8, 1)
   service_cidr_range_     = cidrsubnet(data.packet_precreated_ip_block.addresses.cidr_notation, 8, 2)
   # NOTE: subnet size for services in kubernetes can only be 20 bits in size;
@@ -150,7 +150,7 @@ data "ct_config" "worker" {
 }
 
 resource "packet_bgp_session" "worker" {
-  count          = local.additional_master_count
+  count          = local.worker_count
   device_id      = packet_device.worker[count.index].id
   address_family = "ipv6"
 }
@@ -181,6 +181,13 @@ resource "packet_bgp_session" "additional_master" {
   count          = local.additional_master_count
   device_id      = packet_device.additional_master[count.index].id
   address_family = "ipv6"
+}
+
+output "get_kubeconfig" {
+  description = "Prints the command to download the kubeconfig"
+  value = <<-EOT
+    scp core@[${packet_device.master.access_public_ipv6}]:.kube/config ./admin.conf
+  EOT
 }
 
 output "calico_bgp_peers" {
