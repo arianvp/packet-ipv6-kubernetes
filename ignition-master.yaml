@@ -29,7 +29,6 @@ systemd:
         ExecStart=/usr/bin/cp /etc/kubernetes/admin.conf /home/core/.kube/config
         ExecStart=/usr/bin/chown core:core /home/core/.kube/config
 
-        ExecStart=/bin/sh -c 'cat /etc/resources/bgppeer.yaml.tpl | envsubst > /etc/resources/bgppeer.yaml'
         ExecStart=/opt/bin/kubectl create -f https://docs.projectcalico.org/manifests/tigera-operator.yaml
         ExecStart=/opt/bin/kubectl create -f /etc/resources/calico.yaml
         [Install]
