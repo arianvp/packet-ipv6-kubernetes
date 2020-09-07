@@ -23,8 +23,6 @@ locals {
   # a multi-master setup :)
   apiserver_external_ip = cidrhost(local.external_cidr_range, 1)
 
-  subdomain              = "kube2"
-  basedomain             = "arianvp.me"
   # control_plane_endpoint = # "${local.subdomain}.${local.basedomain}"
   control_plane_endpoint = packet_device.master.access_public_ipv6
 
@@ -56,29 +54,6 @@ locals {
     packet_asn     = local.packet_asn
   })
 
-}
-
-data "digitalocean_domain" "arianvp" {
-  name = local.basedomain
-}
-
-
-resource "digitalocean_record" "arianvp" {
-  domain = data.digitalocean_domain.arianvp.name
-  type   = "AAAA"
-  name   = local.subdomain
-  ttl    = "60"
-  # TODO: UNCOMMENT THE FOLLOWING LINE AFTER THE FIRST MASTER NODER IS ONLINE
-  # Once Calico has been initialised, it will expose the kube-apiserver
-  # ClusterIP over BGP which wil load-balance between all the apiservers
-  # However, kubeadm insists on the controlplane_endpoint being reachable
-  # during bootstrap and at that time the ClusterIP isn't serving traffic yet.
-  # Hence we se the controlplaneEndpoint to a domain name that will first point
-  # to a single master node; and once that master node is bootstrapped, we will
-  # have to swap the value to point to the ClusterIP instead
-
-  # value = local.apiserver_external_ip
-  value = packet_device.master.access_public_ipv6
 }
 
 # This is a pre-existing project, where I create and delete a device, such that

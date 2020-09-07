@@ -9,9 +9,5 @@ terraform {
       source  = "poseidon/ct"
       version = "~> 0.6.1"
     }
-    digitalocean = {
-      source  = "digitalocean/digitalocean"
-      version = "~> 1.22.2"
-    }
   }
 }
