@@ -60,7 +60,7 @@ storage:
           ---
           apiVersion: kubeadm.k8s.io/v1beta2
           kind: ClusterConfiguration
-          controlPlaneEndpoint: "${control_plane_endpoint}:443"
+          controlPlaneEndpoint: "$${COREOS_PACKET_IPV6_PUBLIC_0}"
           controllerManager:
             extraArgs:
               flex-volume-plugin-dir: "/opt/libexec/kubernetes/kubelet-plugins/volume/exec/"

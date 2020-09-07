@@ -25,7 +25,8 @@ locals {
 
   subdomain              = "kube2"
   basedomain             = "arianvp.me"
-  control_plane_endpoint = "${local.subdomain}.${local.basedomain}"
+  # control_plane_endpoint = # "${local.subdomain}.${local.basedomain}"
+  control_plane_endpoint = packet_device.master.access_public_ipv6
 
   packet_asn = 65530 # NOTE: this wasn't actually documented anywhere? I found it "somewhere"
 
@@ -116,7 +117,6 @@ data "ct_config" "master" {
       external_cidr_range    = local.external_cidr_range
       certificate_key        = var.kubeadm_certificate_key
       token                  = var.kubeadm_token
-      control_plane_endpoint = local.control_plane_endpoint
     })
   ]
 }
