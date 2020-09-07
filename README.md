@@ -28,7 +28,6 @@ Create an `.envrc.local` with your secrets:
 export TF_VAR_kubeadm_certificate_key=
 export TF_VAR_kubeadm_token=
 export PACKET_AUTH_TOKEN=
-export DIGITALOCEAN_TOKEN=
 ```
 
 ```
