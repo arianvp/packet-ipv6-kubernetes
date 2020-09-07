@@ -9,9 +9,9 @@ variable "kubeadm_certificate_key" {
 }
 
 locals {
-  worker_count            = 2
-  pod_cidr_range          = cidrsubnet(data.packet_precreated_ip_block.addresses.cidr_notation, 8, 1)
-  service_cidr_range_     = cidrsubnet(data.packet_precreated_ip_block.addresses.cidr_notation, 8, 2)
+  worker_count        = 2
+  pod_cidr_range      = cidrsubnet(data.packet_precreated_ip_block.addresses.cidr_notation, 8, 1)
+  service_cidr_range_ = cidrsubnet(data.packet_precreated_ip_block.addresses.cidr_notation, 8, 2)
   # NOTE: subnet size for services in kubernetes can only be 20 bits in size;
   # hence allocate a smaller block in the larger /64 block
   service_cidr_range  = cidrsubnet(local.service_cidr_range_, 44, 0)
@@ -87,11 +87,11 @@ data "ct_config" "master" {
     templatefile("./ignition-master.yaml", {
       # TODO: There is a cycle. instead use coreos-metadata?
       # node_ip = packet_device.master.access_public_ipv6
-      pod_cidr_range         = local.pod_cidr_range
-      service_cidr_range     = local.service_cidr_range
-      external_cidr_range    = local.external_cidr_range
-      certificate_key        = var.kubeadm_certificate_key
-      token                  = var.kubeadm_token
+      pod_cidr_range      = local.pod_cidr_range
+      service_cidr_range  = local.service_cidr_range
+      external_cidr_range = local.external_cidr_range
+      certificate_key     = var.kubeadm_certificate_key
+      token               = var.kubeadm_token
     })
   ]
 }
@@ -140,6 +140,9 @@ output "master_ipv6" {
 output "calico_bgp_peers" {
   description = "A calico manifest describing the topology of the cluster. You should apply this to thhe cluster to set up all the needed routes."
   value = templatefile("bgppeer.yaml.tpl", {
-    workers            = packet_device.worker
+    workers             = packet_device.worker
+    master              = packet_device.master
+    service_cidr_range  = local.service_cidr_range
+    external_cidr_range = local.external_cidr_range
   })
 }

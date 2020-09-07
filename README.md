@@ -72,6 +72,7 @@ as this also configures the `BGPPeer`s with the packet routers.
 * Show what it means for routes
 
 ## bbbbut What about security?! (Out of scope probably due to time constraints!)
+* Or maybe David can teach me NetworkPolicy??
 
 * Overlay networks and NAT give a false sense of security. This is what IPv6 advocates yell all day
 * Instead, we want fine-grained routing policies that tell which pods and reach what services, and what services are publically reachable
