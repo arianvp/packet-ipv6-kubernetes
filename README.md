@@ -21,6 +21,26 @@ properly. However, with IPV6 there are no overlays and NAT; so we are forced to
 take security seriously and explicitly define NetworkPolicies to make sure only
 the things that _should_ talk to eachother _can_ talk to eachother.
 
+# Usage
+
+Create an `.envrc.local` with your secrets:
+```
+export TF_VAR_kubeadm_certificate_key=
+export TF_VAR_kubeadm_token=
+export PACKET_AUTH_TOKEN=
+export DIGITALOCEAN_TOKEN=
+```
+
+```
+$ direnv allow
+$ apply
+```
+
+`apply` might fail to get the `kubeconfig` on first try; as the cluster might still be bootstrapping.
+Type `apply` again to get it.  The script is idempotent.  It is important to make run it until it succeeds
+as this also configures the `BGPPeer`s with the packet routers.
+
+
 # Stream notes
 
 ## Packet, pods, ipv6
