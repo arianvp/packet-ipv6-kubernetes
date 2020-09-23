@@ -17,12 +17,6 @@ locals {
   service_cidr_range  = cidrsubnet(local.service_cidr_range_, 44, 0)
   external_cidr_range = cidrsubnet(data.packet_precreated_ip_block.addresses.cidr_notation, 8, 3)
 
-  # NOTE: We're in IPv6 land! Everything is public by default. So we can simply
-  # connect to the kubernetes API server through its service_ip! This is by
-  # convention always the first IP in the block. We can use this in kubeadm for
-  # a multi-master setup :)
-  apiserver_external_ip = cidrhost(local.external_cidr_range, 1)
-
   # control_plane_endpoint = # "${local.subdomain}.${local.basedomain}"
   control_plane_endpoint = packet_device.master.access_public_ipv6
 
