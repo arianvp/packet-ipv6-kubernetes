@@ -8,11 +8,9 @@ overlay nonsense; but a pure IP/Layer-3 networking fabric.
 Instead of using an overlay network, each pod is directly assigned an IPV6
 address. Routes to pods are announced directly to the packet router BGP.
 
-Furthermore ClusterIPs are also allocated from a public range.  This allows for
-some cool tricks. For example, this means we can announce the apiserver
-ClusterIP to be publically reachable, giving us a load-balancer ingress to our
-APIServer for free. We can then use this to set up a multi-master cluster
-without any external loadbalancers.
+Furthermore ClusterIPs are also allocated from a public range. This means we can
+publically announce kubernetes services directly; without the need of dedicated cloud load-balancers!
+Because Packet's routers support ECMP; traffic will be load-balanced between nodes that announce the service automatically.
 
 The IPV6-native world is a bit different than you're used to. Normally in k8s
 we kind of rely on NAT and overlaynetworks for a false sense of security, and
