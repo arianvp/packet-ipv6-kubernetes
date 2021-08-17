@@ -4,7 +4,7 @@ systemd:
       dropins:
         # coreos-metdata.service by default doesn't expose the default gateway;
         # so we extend it to do so We need this to set up BGP Peering for the
-        # master node
+        # controlplane node
         - name: 00-gateway.conf
           contents: |
             [Service]
@@ -24,7 +24,7 @@ systemd:
         Type=oneshot
         ExecStart=/bin/sh -c 'cat /etc/kubeadm/config.yaml.tpl | envsubst > /etc/kubeadm/config.yaml'
         ExecStart=/opt/bin/kubeadm init --config /etc/kubeadm/config.yaml --upload-certs
-        
+
         ExecStart=/usr/bin/sudo -u core mkdir -p /home/core/.kube
         ExecStart=/usr/bin/cp /etc/kubernetes/admin.conf /home/core/.kube/config
         ExecStart=/usr/bin/chown core:core /home/core/.kube/config

@@ -13,17 +13,17 @@ spec:
     - cidr: "${external_cidr_range}"
 
 
-%{ for network in master.network ~}
+%{ for network in controlplane.network ~}
 %{ if network.family == 6 ~}
 ---
 apiVersion: projectcalico.org/v3
 kind: BGPPeer
 metadata:
-  name: "${master.hostname}"
+  name: "${controlplane.hostname}"
 spec:
   peerIP: "${network.gateway}"
   asNumber: ${metal_asn}
-  node: "${master.hostname}"
+  node: "${controlplane.hostname}"
 %{ endif ~}
 %{ endfor ~}
 

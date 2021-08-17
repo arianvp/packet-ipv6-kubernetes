@@ -19,7 +19,8 @@ locals {
   external_cidr_range = cidrsubnet(data.metal_precreated_ip_block.addresses.cidr_notation, 8, 3)
 
   # control_plane_endpoint = # "${local.subdomain}.${local.basedomain}"
-  control_plane_endpoint = metal_device.master.access_public_ipv6
+  # TODO: kube-vip?
+  control_plane_endpoint = metal_device.controlplane.access_public_ipv6
 
   metal_asn = 65530 # NOTE: this wasn't actually documented anywhere? I found it "somewhere"
 
@@ -66,22 +67,22 @@ data "metal_precreated_ip_block" "addresses" {
   public         = true
 }
 
-resource "metal_device" "master" {
-  hostname         = "master"
+resource "metal_device" "controlplane" {
+  hostname         = "controlplane"
   plan             = "t1.small.x86"
   facilities       = ["ams1"]
   operating_system = "flatcar_alpha"
   billing_cycle    = "hourly"
   project_id       = data.metal_project.kubernetes.id
-  user_data        = data.ct_config.master.rendered
+  user_data        = data.ct_config.controlplane.rendered
 }
 
-data "ct_config" "master" {
+data "ct_config" "controlplane" {
   content = local.ignition_base
   snippets = [
-    templatefile("./ignition/master.yaml", {
+    templatefile("./ignition/controlplane.yaml", {
       # TODO: There is a cycle. instead use coreos-metadata?
-      # node_ip = metal_device.master.access_public_ipv6
+      # node_ip = metal_device.controlplane.access_public_ipv6
       pod_cidr_range      = local.pod_cidr_range
       service_cidr_range  = local.service_cidr_range
       external_cidr_range = local.external_cidr_range
@@ -91,8 +92,8 @@ data "ct_config" "master" {
   ]
 }
 
-resource "metal_bgp_session" "master" {
-  device_id      = metal_device.master.id
+resource "metal_bgp_session" "controlplane" {
+  device_id      = metal_device.controlplane.id
   address_family = "ipv6"
 }
 
@@ -124,19 +125,19 @@ resource "metal_bgp_session" "worker" {
   address_family = "ipv6"
 }
 
-output "master_ipv4" {
-  value = metal_device.master.access_public_ipv4
+output "controlplane_ipv4" {
+  value = metal_device.controlplane.access_public_ipv4
 }
 
-output "master_ipv6" {
-  value = metal_device.master.access_public_ipv6
+output "controlplane_ipv6" {
+  value = metal_device.controlplane.access_public_ipv6
 }
 
 output "calico_bgp_peers" {
   description = "A calico manifest describing the topology of the cluster. You should apply this to thhe cluster to set up all the needed routes."
   value = templatefile("manifests/bgppeer.yaml.tpl", {
     workers             = metal_device.worker
-    master              = metal_device.master
+    controlplane              = metal_device.controlplane
     metal_asn          = local.metal_asn
     service_cidr_range  = local.service_cidr_range
     external_cidr_range = local.external_cidr_range
