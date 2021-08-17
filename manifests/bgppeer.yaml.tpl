@@ -7,10 +7,8 @@ spec:
   logSeverityScreen: Info
   nodeToNodeMeshEnabled: false
   asNumber: 65000
-  # This will cause all cluster ip's to be announced to Packet's routers.
+  # This will cause all cluster ip's to be announced to metal's routers.
   # Allowing us to reach kubernetes services from the outside! pretty dope
-  serviceClusterIPs:
-    - cidr: "${service_cidr_range}"
   serviceExternalIPs:
     - cidr: "${external_cidr_range}"
 
@@ -24,7 +22,7 @@ metadata:
   name: "${master.hostname}"
 spec:
   peerIP: "${network.gateway}"
-  asNumber: 65530
+  asNumber: ${metal_asn}
   node: "${master.hostname}"
 %{ endif ~}
 %{ endfor ~}
@@ -39,7 +37,7 @@ metadata:
   name: "${device.hostname}"
 spec:
   peerIP: "${network.gateway}"
-  asNumber: 65530
+  asNumber: ${metal_asn}
   node: "${device.hostname}"
 %{ endif ~}
 %{ endfor ~}

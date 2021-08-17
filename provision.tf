@@ -1,3 +1,4 @@
+
 variable "kubeadm_token" {
   type        = string
   description = "The token use for bootstrapping the kubernetes cluster.\nGenerate with: \n$ kubeadm token generate"
@@ -10,12 +11,12 @@ variable "kubeadm_certificate_key" {
 
 locals {
   worker_count        = 2
-  pod_cidr_range      = cidrsubnet(data.packet_precreated_ip_block.addresses.cidr_notation, 8, 1)
-  service_cidr_range_ = cidrsubnet(data.packet_precreated_ip_block.addresses.cidr_notation, 8, 2)
+  pod_cidr_range      = cidrsubnet(data.metal_precreated_ip_block.addresses.cidr_notation, 8, 1)
+  service_cidr_range_ = cidrsubnet(data.metal_precreated_ip_block.addresses.cidr_notation, 8, 2)
   # NOTE: subnet size for services in kubernetes can only be 20 bits in size;
   # hence allocate a smaller block in the larger /64 block
   service_cidr_range  = cidrsubnet(local.service_cidr_range_, 44, 0)
-  external_cidr_range = cidrsubnet(data.packet_precreated_ip_block.addresses.cidr_notation, 8, 3)
+  external_cidr_range = cidrsubnet(data.metal_precreated_ip_block.addresses.cidr_notation, 8, 3)
 
   # NOTE: We're in IPv6 land! Everything is public by default. So we can simply
   # connect to the kubernetes API server through its service_ip! This is by
@@ -24,9 +25,9 @@ locals {
   apiserver_external_ip = cidrhost(local.external_cidr_range, 1)
 
   # control_plane_endpoint = # "${local.subdomain}.${local.basedomain}"
-  control_plane_endpoint = packet_device.master.access_public_ipv6
+  control_plane_endpoint = metal_device.master.access_public_ipv6
 
-  packet_asn = 65530 # NOTE: this wasn't actually documented anywhere? I found it "somewhere"
+  metal_asn = 65530 # NOTE: this wasn't actually documented anywhere? I found it "somewhere"
 
   K8S_VERSION  = "v1.19.0"
   KUBEADM_URL  = "https://storage.googleapis.com/kubernetes-release/release/${local.K8S_VERSION}/bin/linux/amd64/kubeadm"
@@ -42,7 +43,7 @@ locals {
   CALICOCTL_HASH = "c011c4b81c29e17e570850c6a4a07062a5dd7ddccfbe902994dd5bff712f3148b8e028c1c788dc738d0ed73524f635cb516a781fc22522838c8651d904dd847f"
 
 
-  ignition_base = templatefile("./ignition-base.yaml", {
+  ignition_base = templatefile("./ignition/base.yaml", {
     KUBEADM_URL    = local.KUBEADM_URL
     KUBEADM_HASH   = local.KUBEADM_HASH
     KUBELET_URL    = local.KUBELET_URL
@@ -51,42 +52,42 @@ locals {
     KUBECTL_HASH   = local.KUBECTL_HASH
     CALICOCTL_URL  = local.CALICOCTL_URL
     CALICOCTL_HASH = local.CALICOCTL_HASH
-    packet_asn     = local.packet_asn
+    metal_asn     = local.metal_asn
   })
 
 }
 
 # This is a pre-existing project, where I create and delete a device, such that
 # the
-data "packet_project" "kubernetes" {
+data "metal_project" "kubernetes" {
   name = "kubernetes"
 }
 
 # This only works if the project we refer to had a device created at some point
 # so create and delete a dummy device in the UI before this data source actually works
-data "packet_precreated_ip_block" "addresses" {
+data "metal_precreated_ip_block" "addresses" {
   facility       = "ams1"
-  project_id     = data.packet_project.kubernetes.id
+  project_id     = data.metal_project.kubernetes.id
   address_family = 6
   public         = true
 }
 
-resource "packet_device" "master" {
+resource "metal_device" "master" {
   hostname         = "master"
   plan             = "t1.small.x86"
   facilities       = ["ams1"]
   operating_system = "flatcar_alpha"
   billing_cycle    = "hourly"
-  project_id       = data.packet_project.kubernetes.id
+  project_id       = data.metal_project.kubernetes.id
   user_data        = data.ct_config.master.rendered
 }
 
 data "ct_config" "master" {
   content = local.ignition_base
   snippets = [
-    templatefile("./ignition-master.yaml", {
+    templatefile("./ignition/master.yaml", {
       # TODO: There is a cycle. instead use coreos-metadata?
-      # node_ip = packet_device.master.access_public_ipv6
+      # node_ip = metal_device.master.access_public_ipv6
       pod_cidr_range      = local.pod_cidr_range
       service_cidr_range  = local.service_cidr_range
       external_cidr_range = local.external_cidr_range
@@ -96,26 +97,26 @@ data "ct_config" "master" {
   ]
 }
 
-resource "packet_bgp_session" "master" {
-  device_id      = packet_device.master.id
+resource "metal_bgp_session" "master" {
+  device_id      = metal_device.master.id
   address_family = "ipv6"
 }
 
-resource "packet_device" "worker" {
+resource "metal_device" "worker" {
   count            = local.worker_count
   hostname         = "worker${count.index}"
   plan             = "t1.small.x86"
   facilities       = ["ams1"]
   operating_system = "flatcar_alpha"
   billing_cycle    = "hourly"
-  project_id       = data.packet_project.kubernetes.id
+  project_id       = data.metal_project.kubernetes.id
   user_data        = data.ct_config.worker.rendered
 }
 
 data "ct_config" "worker" {
   content = local.ignition_base
   snippets = [
-    templatefile("./kubeadm-node.yaml", {
+    templatefile("./ignition/worker.yaml", {
       token                  = var.kubeadm_token
       control_plane_endpoint = local.control_plane_endpoint
       certificate_key        = null
@@ -123,26 +124,29 @@ data "ct_config" "worker" {
   ]
 }
 
-resource "packet_bgp_session" "worker" {
+resource "metal_bgp_session" "worker" {
   count          = local.worker_count
-  device_id      = packet_device.worker[count.index].id
+  device_id      = metal_device.worker[count.index].id
   address_family = "ipv6"
 }
 
 output "master_ipv4" {
-  value = packet_device.master.access_public_ipv4
+  value = metal_device.master.access_public_ipv4
 }
 
 output "master_ipv6" {
-  value = packet_device.master.access_public_ipv6
+  value = metal_device.master.access_public_ipv6
 }
 
 output "calico_bgp_peers" {
   description = "A calico manifest describing the topology of the cluster. You should apply this to thhe cluster to set up all the needed routes."
-  value = templatefile("bgppeer.yaml.tpl", {
-    workers             = packet_device.worker
-    master              = packet_device.master
+  value = templatefile("manifests/bgppeer.yaml.tpl", {
+    workers             = metal_device.worker
+    master              = metal_device.master
+    metal_asn          = local.metal_asn
     service_cidr_range  = local.service_cidr_range
     external_cidr_range = local.external_cidr_range
   })
 }
+
+
