@@ -41,11 +41,17 @@ as this also configures the `BGPPeer`s with the packet routers.
 # Stream notes
 
 https://www.youtube.com/watch?v=ohwHzr4O6Fo
+## Gotchas
+* Enable ipv6 forwarding
+* Set up ipv6 dns servers on host as coredns will use the host's dns servers
+* Docuemtnation for both kubeadm and calico incomplete or outdated:
+  * need to set kubelet node-ip
+  * need to disable ipv4 autodetection on calico
+
 
 ## Packet, pods, ipv6
 
 ![packet](https://docs.projectcalico.org/images/anatomy-of-a-packet.svg)
-
 
 * Pod network is flat. all pods should reach eachother without NAT
 * pod cidr != node cidr != service cidr
@@ -81,5 +87,4 @@ https://www.youtube.com/watch?v=ohwHzr4O6Fo
 * Service Mesh like Istio
 
 ## Whats next - Security
-
 

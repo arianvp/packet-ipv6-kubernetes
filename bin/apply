@@ -9,4 +9,3 @@ scp core@[$(terraform output master_ipv6)]:.kube/config ./admin.conf || (echo "M
 echo "Applying bgp peers..."
 terraform output calico_bgp_peers | calicoctl apply -f -
 
-
