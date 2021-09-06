@@ -18,8 +18,6 @@ locals {
   service_cidr_range  = cidrsubnet(local.service_cidr_range_, 44, 0)
   external_cidr_range = cidrsubnet(data.metal_precreated_ip_block.addresses.cidr_notation, 8, 3)
 
-  # control_plane_endpoint = # "${local.subdomain}.${local.basedomain}"
-  # TODO: kube-vip?
   control_plane_endpoint = metal_device.controlplane.access_public_ipv6
 
   metal_asn = 65530 # NOTE: this wasn't actually documented anywhere? I found it "somewhere"
@@ -47,7 +45,7 @@ locals {
     KUBECTL_HASH   = local.KUBECTL_HASH
     CALICOCTL_URL  = local.CALICOCTL_URL
     CALICOCTL_HASH = local.CALICOCTL_HASH
-    metal_asn     = local.metal_asn
+    metal_asn      = local.metal_asn
   })
 
 }
@@ -71,7 +69,9 @@ resource "metal_device" "controlplane" {
   hostname         = "controlplane"
   plan             = "t1.small.x86"
   facilities       = ["ams1"]
-  operating_system = "flatcar_alpha"
+  operating_system = "custom_ipxe"
+  # TODO: Do not hardcode
+  ipxe_script_url  = "https://gist.githubusercontent.com/arianvp/3ec897484746686a5988a6dca7533f6c/raw/318bec3ab4dadf4d22dc08f5a2c51ceb4736e097/boot.ipxe"
   billing_cycle    = "hourly"
   project_id       = data.metal_project.kubernetes.id
   user_data        = data.ct_config.controlplane.rendered
@@ -92,6 +92,7 @@ data "ct_config" "controlplane" {
   ]
 }
 
+/*
 resource "metal_bgp_session" "controlplane" {
   device_id      = metal_device.controlplane.id
   address_family = "ipv6"
@@ -137,11 +138,11 @@ output "calico_bgp_peers" {
   description = "A calico manifest describing the topology of the cluster. You should apply this to thhe cluster to set up all the needed routes."
   value = templatefile("manifests/bgppeer.yaml.tpl", {
     workers             = metal_device.worker
-    controlplane              = metal_device.controlplane
-    metal_asn          = local.metal_asn
+    controlplane        = metal_device.controlplane
+    metal_asn           = local.metal_asn
     service_cidr_range  = local.service_cidr_range
     external_cidr_range = local.external_cidr_range
   })
-}
+}*/
 
 

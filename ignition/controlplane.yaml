@@ -1,36 +1,30 @@
+---
+variant: fcos
+version: 1.4.0
 systemd:
   units:
-    - name: coreos-metadata.service
-      dropins:
-        # coreos-metdata.service by default doesn't expose the default gateway;
-        # so we extend it to do so We need this to set up BGP Peering for the
-        # controlplane node
-        - name: 00-gateway.conf
-          contents: |
-            [Service]
-            ExecStart=/bin/sh -c 'echo "COREOS_PACKET_IPV6_GATEWAY=$(curl https://metadata.packet.net/metadata | jq -r \'.network.addresses[] | select(.address_family == 6) | .gateway\')" >> /run/metadata/flatcar'
     - name: kubeadm.service
-      enabled: true  # We manually start it in terraform for bootstrap reasons
+      enabled: false  # We manually start it in terraform for bootstrap reasons
       contents: |
         [Unit]
         ConditionPathExists=!/etc/kubernetes/kubelet.conf
-        After=coreos-metadata.service
-        Requires=coreos-metadata.service
+        After=afterburn.service
+        Requires=afterburn.service
         [Service]
-        EnvironmentFile=/run/metadata/coreos
+        EnvironmentFile=/run/metadata/afterburn
         Environment=PATH=/usr/bin:/usr/sbin:/opt/bin
         Environment=KUBECONFIG=/etc/kubernetes/admin.conf
         Environment=DATASTORE_TYPE=kubernetes
         Type=oneshot
         ExecStart=/bin/sh -c 'cat /etc/kubeadm/config.yaml.tpl | envsubst > /etc/kubeadm/config.yaml'
-        ExecStart=/opt/bin/kubeadm init --config /etc/kubeadm/config.yaml --upload-certs
+        ExecStart=/usr/local/bin/kubeadm init --config /etc/kubeadm/config.yaml --upload-certs
 
         ExecStart=/usr/bin/sudo -u core mkdir -p /home/core/.kube
         ExecStart=/usr/bin/cp /etc/kubernetes/admin.conf /home/core/.kube/config
         ExecStart=/usr/bin/chown core:core /home/core/.kube/config
 
-        ExecStart=/opt/bin/kubectl create -f https://docs.projectcalico.org/manifests/tigera-operator.yaml
-        ExecStart=/opt/bin/kubectl create -f /etc/resources/calico.yaml
+        # ExecStart=/usr/bin/kubectl create -f https://docs.projectcalico.org/manifests/tigera-operator.yaml
+        # ExecStart=/usr/bin/kubectl create -f /etc/resources/calico.yaml
         [Install]
         WantedBy=multi-user.target
 storage:
@@ -53,11 +47,11 @@ storage:
               volume-plugin-dir: "/opt/libexec/kubernetes/kubelet-plugins/volume/exec/"
               # needed; otherwise kube-proxy will not come up
               # Kubernetes just takes the first IP it sees; which is the wrong one :)
-              node-ip: "$${COREOS_PACKET_IPV6_PUBLIC_0}"
+              node-ip: "$${AFTERBURN_PACKET_IPV6_PUBLIC_0}"
           ---
           apiVersion: kubeadm.k8s.io/v1beta2
           kind: ClusterConfiguration
-          controlPlaneEndpoint: "$${COREOS_PACKET_IPV6_PUBLIC_0}"
+          controlPlaneEndpoint: "$${AFTERBURN_PACKET_IPV6_PUBLIC_0}"
           controllerManager:
             extraArgs:
               flex-volume-plugin-dir: "/opt/libexec/kubernetes/kubelet-plugins/volume/exec/"

@@ -4,3 +4,4 @@ terraform.tfstate*
 .direnv
 admin.conf
 .envrc.local
+flatcar-linux-update-operator

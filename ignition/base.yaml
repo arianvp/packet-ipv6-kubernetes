@@ -1,26 +1,51 @@
-networkd:
-  units:
-    - name: 05-bond0.network
-      dropins:
-        - name: 00-forwarding.conf
-          contents: |
-            [Network]
-            IPForward=ipv6
-        # TODO: I expected this to _override_ DNS but currently it does not.
-        # See https://github.com/systemd/systemd/issues/16959
-        - name: 01-dns.conf
-          contents: |
-            [Network]
-            DNS=
-            DNS=2001:4860:4860::8888
-            DNS=2001:4860:4860::8844
+---
+variant: fcos
+version: 1.4.0
+
+kernel_arguments:
+  should_exist:
+    - console=ttyS1,115200n8
+  should_not_exist:
+    - console=ttyS0,115200n8
+
+# TODO: Not supported on FCOS. Need to find another solution
+# networkd:
+#   units:
+#     - name: 05-bond0.network
+#       dropins:
+#         - name: 00-forwarding.conf
+#           contents: |
+#             [Network]
+#             IPForward=ipv6
+#         # TODO: I expected this to _override_ DNS but currently it does not.
+#         # See https://github.com/systemd/systemd/issues/16959
+#         - name: 01-dns.conf
+#           contents: |
+#             [Network]
+#             DNS=
+#             DNS=2001:4860:4860::8888
+#             DNS=2001:4860:4860::8844
 systemd:
   units:
-    # We'll install https://github.com/kinvolk/flatcar-linux-update-operator for updates instead
-    - name: locksmithd.service
-      mask: true
-    - name: update-engine.service
+    - name: NetworkManager-reconfigure.service
       enabled: true
+      contents: |
+        [Unit]
+        After=afterburn.service
+        Requires=afterburn.service
+        ConditionPathExists=!/var/lib/%N.stamp
+        [Service]
+        EnvironmentFile=/run/metadata/afterburn
+        Type=oneshot
+        ExecStart=/bin/sh -c '/usr/bin/nmcli connection modify "Wired connection 1" +ipv4.routes "$AFTERBURN_PACKET_IPV4_PRIVATE_0/31 $AFTERBURN_PACKET_IPV4_PRIVATE_GATEWAY_0"'
+        ExecStart=/bin/sh -c '/usr/bin/nmcli connection modify "Wired connection 1" +ipv4.addresses $AFTERBURN_PACKET_IPV4_PRIVATE_0/31'
+        ExecStart=/bin/sh -c '/usr/bin/nmcli connection modify "Wired connection 1" +ipv6.routes "$AFTERBURN_PACKET_IPV6_PUBLIC_0/127 $AFTERBURN_PACKET_IPV6_PUBLIC_GATEWAY_0"'
+        ExecStart=/bin/sh -c '/usr/bin/nmcli connection modify "Wired connection 1" +ipv6.addresses $AFTERBURN_PACKET_IPV6_PUBLIC_0/127'
+        ExecStart=/usr/bin/nmcli connection reload
+        ExecStart=/usr/bin/nmcli device reapply enp0s20f0
+        ExecStart=/usr/bin/touch /var/lib/%N.stamp
+        [Install]
+        WantedBy=multi-user.target
     - name: kubelet.service
       enabled: true
       contents: |
@@ -35,7 +60,7 @@ systemd:
         Environment="KUBELET_CONFIG_ARGS=--config=/var/lib/kubelet/config.yaml"
         # This is a file that "kubeadm init" and "kubeadm join" generates at runtime, populating the KUBELET_KUBEADM_ARGS variable dynamically
         EnvironmentFile=-/var/lib/kubelet/kubeadm-flags.env
-        ExecStart=/opt/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS
+        ExecStart=/usr/local/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS
         Restart=always
         StartLimitInterval=0
         RestartSec=10
@@ -47,41 +72,34 @@ storage:
     - path: /opt/bin
     - path: /opt/cni/bin
   files:
-    - path: "/opt/bin/kubeadm"
+    - path: /etc/sysctl.d/00-forwarding.conf
+      contents:
+        inline: |
+          net.ipv6.conf.all.forwarding=1
+          net.ipv4.ip_forward=1
+    - path: "/usr/local/bin/kubeadm"
       mode: 755
       contents:
-        remote:
-          url: "${KUBEADM_URL}"
-          verification:
-            hash:
-              function: sha512
-              sum: "${KUBEADM_HASH}"
-    - path: "/opt/bin/kubelet"
+        source: "${KUBEADM_URL}"
+        verification:
+          hash: "sha512-${KUBEADM_HASH}"
+    - path: "/usr/local/bin/kubelet"
       mode: 755
       contents:
-        remote:
-          url: "${KUBELET_URL}"
-          verification:
-            hash:
-              function: sha512
-              sum: "${KUBELET_HASH}"
-    - path: "/opt/bin/kubectl"
+        source: "${KUBELET_URL}"
+        verification:
+          hash: "sha512-${KUBELET_HASH}"
+    - path: "/usr/local/bin/kubectl"
       mode: 755
       contents:
-        remote:
-          url: "${KUBECTL_URL}"
-          verification:
-            hash:
-              function: sha512
-              sum: "${KUBECTL_HASH}"
-    - path: "/opt/bin/calicoctl"
+        source: "${KUBECTL_URL}"
+        verification:
+          hash: "sha512-${KUBECTL_HASH}"
+    - path: "/usr/local/bin/calicoctl"
       mode: 755
       contents:
-        remote:
-          url: "${CALICOCTL_URL}"
-          verification:
-            hash:
-              function: sha512
-              sum: "${CALICOCTL_HASH}"
+        source: "${CALICOCTL_URL}"
+        verification:
+          hash: "sha512-${CALICOCTL_HASH}"
 
 
