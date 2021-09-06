@@ -40,6 +40,8 @@ as this also configures the `BGPPeer`s with the packet routers.
 
 # Stream notes
 
+https://www.youtube.com/watch?v=ohwHzr4O6Fo
+
 ## Packet, pods, ipv6
 
 ![packet](https://docs.projectcalico.org/images/anatomy-of-a-packet.svg)
