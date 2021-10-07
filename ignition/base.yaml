@@ -21,6 +21,7 @@ systemd:
       mask: true
     - name: update-engine.service
       enabled: true
+
     - name: kubelet.service
       enabled: true
       contents: |
@@ -46,6 +47,10 @@ storage:
   directories:
     - path: /opt/bin
     - path: /opt/cni/bin
+  # Fetches ssh keys from equinix api
+  links:
+    - path: /etc/systemd/system/multi-user.target.wants/coreos-metadata-sshkeys@core.service
+      target: /usr/lib/systemd/system/coreos-metadata-sshkeys@.service
   files:
     - path: "/opt/bin/kubeadm"
       mode: 755

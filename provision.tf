@@ -38,7 +38,7 @@ locals {
   # re: https://github.com/ipxe/ipxe/pull/116 re:
   # https://github.com/ipxe/ipxe/pull/112 re:
   # https://lists.ipxe.org/pipermail/ipxe-devel/2020-May/007042.html
-  IPXE_URL = "http://stable.release.flatcar-linux.net/amd64-usr/2905.2.5/flatcar_production_packet.ipxe"
+  IPXE_URL = "http://beta.release.flatcar-linux.net/amd64-usr/current/flatcar_production_packet.ipxe"
 
 
   ignition_base = templatefile("./ignition/base.yaml", {
