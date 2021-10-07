@@ -9,8 +9,9 @@ spec:
   asNumber: 65000
   # This will cause all cluster ip's to be announced to metal's routers.
   # Allowing us to reach kubernetes services from the outside! pretty dope
-  serviceExternalIPs:
-    - cidr: "${external_cidr_range}"
+  serviceClusterIPs:
+    - cidr: "${service_cidr_range}"
+
 
 
 %{ for network in controlplane.network ~}
