@@ -9,6 +9,7 @@ systemd:
           contents: |
             [Service]
             ExecStart=/bin/sh -c 'echo "COREOS_PACKET_IPV6_GATEWAY=$(curl https://metadata.packet.net/metadata | jq -r \'.network.addresses[] | select(.address_family == 6) | .gateway\')" >> /run/metadata/flatcar'
+            ExecStart=/bin/sh -c 'echo "COREOS_PACKET_IPV6_PARENT_BLOCK=$(curl https://metadata.packet.net/metadata | jq -r \'.network.addresses[] | select(.address_family == 6) | .parent_block\')" >> /run/metadata/flatcar'
     - name: kubeadm.service
       enabled: true  # We manually start it in terraform for bootstrap reasons
       contents: |

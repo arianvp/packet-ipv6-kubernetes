@@ -52,36 +52,20 @@ storage:
       contents:
         remote:
           url: "${KUBEADM_URL}"
-          verification:
-            hash:
-              function: sha512
-              sum: "${KUBEADM_HASH}"
     - path: "/opt/bin/kubelet"
       mode: 755
       contents:
         remote:
           url: "${KUBELET_URL}"
-          verification:
-            hash:
-              function: sha512
-              sum: "${KUBELET_HASH}"
     - path: "/opt/bin/kubectl"
       mode: 755
       contents:
         remote:
           url: "${KUBECTL_URL}"
-          verification:
-            hash:
-              function: sha512
-              sum: "${KUBECTL_HASH}"
     - path: "/opt/bin/calicoctl"
       mode: 755
       contents:
         remote:
           url: "${CALICOCTL_URL}"
-          verification:
-            hash:
-              function: sha512
-              sum: "${CALICOCTL_HASH}"
 
 
