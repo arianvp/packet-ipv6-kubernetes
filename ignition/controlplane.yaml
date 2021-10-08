@@ -51,6 +51,7 @@ storage:
           nodeRegistration:
             # taints: []  # control-plane should allow jobs
             kubeletExtraArgs:
+              cloud-provider: "external"
               volume-plugin-dir: "/opt/libexec/kubernetes/kubelet-plugins/volume/exec/"
               # needed; otherwise kube-proxy will not come up
               # Kubernetes just takes the first IP it sees; which is the wrong one :)
