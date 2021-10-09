@@ -1,5 +1,5 @@
 ---
-apiVersion: crd.projectcalico.org/v1
+apiVersion: projectcalico.org/v3
 kind: BGPConfiguration
 metadata:
   name: default
@@ -17,7 +17,7 @@ spec:
 %{ for network in controlplane.network ~}
 %{ if network.family == 6 ~}
 ---
-apiVersion: crd.projectcalico.org/v1
+apiVersion: projectcalico.org/v3
 kind: BGPPeer
 metadata:
   name: "${controlplane.hostname}"
@@ -32,7 +32,7 @@ spec:
 %{ for network in device.network ~}
 %{ if network.family == 6 ~}
 ---
-apiVersion: crd.projectcalico.org/v1
+apiVersion: projectcalico.org/v3
 kind: BGPPeer
 metadata:
   name: "${device.hostname}"
