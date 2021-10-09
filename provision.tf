@@ -137,6 +137,7 @@ output "controlplane_ipv6" {
 
 output "calico_bgp_peers" {
   description = "A calico manifest describing the topology of the cluster. You should apply this to thhe cluster to set up all the needed routes."
+  sensitive = true
   value = templatefile("manifests/bgppeer.yaml.tpl", {
     workers             = metal_device.worker
     controlplane        = metal_device.controlplane

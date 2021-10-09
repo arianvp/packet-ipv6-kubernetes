@@ -6,3 +6,4 @@ admin.conf
 .envrc.local
 cloud-sa.json
 ca.key
+.terraform.tfstate.lock.info
