@@ -7,5 +7,5 @@ echo "Fetching kubeconfig from master..."
 scp core@[$(terraform output -raw controlplane_ipv6)]:.kube/config ./admin.conf || (echo "Master node didn't come up yet. Try again in a bit" && exit 1)
 
 echo "Applying bgp peers..."
-terraform output calico_bgp_peers | kubectl apply -f -
+terraform output -raw calico_bgp_peers | KUBECONFIG=./admin.conf calicoctl apply -f -
 
