@@ -31,7 +31,6 @@ systemd:
         ExecStart=/usr/bin/chown core:core /home/core/.kube/config
 
         ExecStart=/opt/bin/kubectl create -f https://docs.projectcalico.org/manifests/tigera-operator.yaml
-        ExecStart=/opt/bin/kubectl create -f https://docs.projectcalico.org/manifests/custom-resources.yaml
         ExecStart=/opt/bin/kubectl create -f /etc/resources/calico.yaml
         [Install]
         WantedBy=multi-user.target

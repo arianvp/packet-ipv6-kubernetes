@@ -24,14 +24,14 @@ locals {
 
   metal_asn = 65530 # NOTE: this wasn't actually documented anywhere? I found it "somewhere"
 
-  K8S_VERSION  = "v1.22.2"
-  KUBEADM_URL  = "https://storage.googleapis.com/kubernetes-release/release/${local.K8S_VERSION}/bin/linux/amd64/kubeadm"
+  K8S_VERSION = "v1.22.2"
+  KUBEADM_URL = "https://storage.googleapis.com/kubernetes-release/release/${local.K8S_VERSION}/bin/linux/amd64/kubeadm"
 
-  KUBELET_URL  = "https://storage.googleapis.com/kubernetes-release/release/${local.K8S_VERSION}/bin/linux/amd64/kubelet"
+  KUBELET_URL = "https://storage.googleapis.com/kubernetes-release/release/${local.K8S_VERSION}/bin/linux/amd64/kubelet"
 
-  KUBECTL_URL  = "https://storage.googleapis.com/kubernetes-release/release/${local.K8S_VERSION}/bin/linux/amd64/kubectl"
+  KUBECTL_URL = "https://storage.googleapis.com/kubernetes-release/release/${local.K8S_VERSION}/bin/linux/amd64/kubectl"
 
-  CALICOCTL_URL  = "https://github.com/projectcalico/calicoctl/releases/download/v3.16.0/calicoctl"
+  CALICOCTL_URL = "https://github.com/projectcalico/calicoctl/releases/download/v3.16.0/calicoctl"
 
   # TODO: Change to HTTPS once ISRG X1 is used. Sent a request for that to flatcar folks. Other option is to reverse proxy flatcar
   # re: https://community.letsencrypt.org/t/production-chain-changes/150739/1
@@ -42,10 +42,10 @@ locals {
 
 
   ignition_base = templatefile("./ignition/base.yaml", {
-    KUBEADM_URL    = local.KUBEADM_URL
-    KUBELET_URL    = local.KUBELET_URL
-    KUBECTL_URL    = local.KUBECTL_URL
-    CALICOCTL_URL  = local.CALICOCTL_URL
+    KUBEADM_URL   = local.KUBEADM_URL
+    KUBELET_URL   = local.KUBELET_URL
+    KUBECTL_URL   = local.KUBECTL_URL
+    CALICOCTL_URL = local.CALICOCTL_URL
     metal_asn     = local.metal_asn
   })
 
@@ -75,6 +75,7 @@ resource "metal_device" "controlplane" {
   billing_cycle    = "hourly"
   project_id       = data.metal_project.kubernetes.id
   user_data        = data.ct_config.controlplane.rendered
+
 }
 
 data "ct_config" "controlplane" {
@@ -138,9 +139,26 @@ output "calico_bgp_peers" {
   description = "A calico manifest describing the topology of the cluster. You should apply this to thhe cluster to set up all the needed routes."
   value = templatefile("manifests/bgppeer.yaml.tpl", {
     workers             = metal_device.worker
-    controlplane              = metal_device.controlplane
-    metal_asn          = local.metal_asn
+    controlplane        = metal_device.controlplane
+    metal_asn           = local.metal_asn
     service_cidr_range  = local.service_cidr_range
     external_cidr_range = local.external_cidr_range
   })
 }
+
+resource "null_resource" "write_kubeconfig" {
+  provisioner "local-exec" {
+    command = <<EOF
+      curl --insecure --connect-timeout 500 'https://[${metal_device.controlplane.access_public_ipv6}]:6443/api/v1/namespaces/kube-public/configmaps/cluster-info' | jq -r .data.kubeconfig > oidc.conf
+      kubectl config set-credentials oidc \
+        --kubeconfig=oidc.conf \
+        --exec-api-version=client.authentication.k8s.io/v1beta1 \
+        --exec-command=kubectl \
+        --exec-arg=oidc-login \
+        --exec-arg=get-token \
+        --exec-arg=--oidc-issuer-url=https://oidc.arianvp.me \
+        --exec-arg=--oidc-client-id=ASF4Os1wJysH6uWvJV9PvyNiph4y4O84tGCHj1FZEE8
+    EOF
+  }
+}
+

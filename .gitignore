@@ -4,3 +4,5 @@ terraform.tfstate*
 .direnv
 admin.conf
 .envrc.local
+cloud-sa.json
+ca.key
