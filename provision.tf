@@ -10,7 +10,7 @@ variable "kubeadm_certificate_key" {
 }
 
 locals {
-  worker_count        = 2
+  worker_count        = 3
   pod_cidr_range      = cidrsubnet(data.metal_precreated_ip_block.addresses.cidr_notation, 8, 1)
   service_cidr_range_ = cidrsubnet(data.metal_precreated_ip_block.addresses.cidr_notation, 8, 2)
   # NOTE: subnet size for services in kubernetes can only be 20 bits in size;
@@ -98,16 +98,29 @@ resource "metal_bgp_session" "controlplane" {
   address_family = "ipv6"
 }
 
+resource "random_pet" "worker" {
+  count     = local.worker_count
+  prefix    = "worker"
+  separator = "-"
+  keepers = {
+    # NOTE: Done because user_data might contain sensitive data
+    user_data = sha256(data.ct_config.worker.rendered)
+  }
+}
+
 resource "metal_device" "worker" {
-  count            = 2
-  hostname         = "worker${count.index}"
-  plan             = "t1.small.x86"
-  facilities       = ["ams1"]
-  operating_system = "custom_ipxe"
-  ipxe_script_url  = local.IPXE_URL
-  billing_cycle    = "hourly"
-  project_id       = data.metal_project.kubernetes.id
-  user_data        = data.ct_config.worker.rendered
+  count                 = local.worker_count
+  hostname              = random_pet.worker[count.index].id
+  plan                  = "t1.small.x86"
+  facilities            = ["ams1"]
+  operating_system      = "custom_ipxe"
+  ipxe_script_url       = local.IPXE_URL
+  billing_cycle         = "hourly"
+  project_id            = data.metal_project.kubernetes.id
+  user_data             = data.ct_config.worker.rendered
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 data "ct_config" "worker" {
@@ -125,6 +138,9 @@ resource "metal_bgp_session" "worker" {
   count          = local.worker_count
   device_id      = metal_device.worker[count.index].id
   address_family = "ipv6"
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 output "controlplane_ipv4" {
@@ -137,7 +153,7 @@ output "controlplane_ipv6" {
 
 output "calico_bgp_peers" {
   description = "A calico manifest describing the topology of the cluster. You should apply this to thhe cluster to set up all the needed routes."
-  sensitive = true
+  sensitive   = true
   value = templatefile("manifests/bgppeer.yaml.tpl", {
     workers             = metal_device.worker
     controlplane        = metal_device.controlplane

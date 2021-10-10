@@ -1,5 +1,14 @@
 systemd:
   units:
+    - name: setup-lvm.service
+      enabled: true
+      contents: |
+        [Unit]
+        ConditionFirstBoot=yes
+        [Service]
+        ExecStart=/usr/bin/vgcreate lvmvg /dev/sda
+        [Install]
+        WantedBy=multi-user.target
     - name: kubeadm.service
       enabled: true
       contents: |
@@ -9,6 +18,7 @@ systemd:
         Requires=coreos-metadata.service
         StartLimitInterval=1200s
         StartLimitBurst=5
+
         [Service]
         EnvironmentFile=/run/metadata/coreos
         Environment=PATH=/usr/bin:/usr/sbin:/opt/bin
@@ -28,6 +38,7 @@ storage:
           apiVersion: kubeadm.k8s.io/v1beta2
           kind: JoinConfiguration
           nodeRegistration:
+            criSocket: /run/containerd/containerd.sock
             kubeletExtraArgs:
               volume-plugin-dir: "/opt/libexec/kubernetes/kubelet-plugins/volume/exec/"
               # needed; otherwise kube-proxy will not come up

@@ -50,6 +50,7 @@ storage:
             bindPort: 6443
           nodeRegistration:
             # taints: []  # control-plane should allow jobs
+            criSocket: /run/containerd/containerd.sock
             kubeletExtraArgs:
               volume-plugin-dir: "/opt/libexec/kubernetes/kubelet-plugins/volume/exec/"
               # needed; otherwise kube-proxy will not come up

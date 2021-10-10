@@ -22,6 +22,10 @@ systemd:
     - name: update-engine.service
       enabled: true
 
+    # It gets lazily started by docker but that's too late for kubeadm
+    - name: containerd.service
+      enabled: true
+
     - name: kubelet.service
       enabled: true
       contents: |
@@ -52,6 +56,15 @@ storage:
     - path: /etc/systemd/system/multi-user.target.wants/coreos-metadata-sshkeys@core.service
       target: /usr/lib/systemd/system/coreos-metadata-sshkeys@.service
   files:
+    - path: "/etc/modules-load.d/00-k8s.conf"
+      contents:
+        inline: |
+          br_netfilter
+    - path: "/etc/sysctl.d/00-k8s.conf"
+      contents:
+        inline: |
+          net.bridge.bridge-nf-call-ip6tables = 1
+          net.bridge.bridge-nf-call-iptables = 1
     - path: "/opt/bin/kubeadm"
       mode: 755
       contents:
@@ -72,5 +85,3 @@ storage:
       contents:
         remote:
           url: "${CALICOCTL_URL}"
-
-
