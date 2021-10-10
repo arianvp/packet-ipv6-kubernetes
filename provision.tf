@@ -10,13 +10,16 @@ variable "kubeadm_certificate_key" {
 }
 
 locals {
-  worker_count        = 3
+  worker_count        = 1
   pod_cidr_range      = cidrsubnet(data.metal_precreated_ip_block.addresses.cidr_notation, 8, 1)
   service_cidr_range_ = cidrsubnet(data.metal_precreated_ip_block.addresses.cidr_notation, 8, 2)
   # NOTE: subnet size for services in kubernetes can only be 20 bits in size;
   # hence allocate a smaller block in the larger /64 block
   service_cidr_range  = cidrsubnet(local.service_cidr_range_, 44, 0)
   external_cidr_range = cidrsubnet(data.metal_precreated_ip_block.addresses.cidr_notation, 8, 3)
+
+  # NOTE: If we run kube-proxy and calico-node on the control-plane, we can use this as the control_plane_endpoint!!!
+  kubernetes_service =  cidrhost(local.service_cidr_range, 1)
 
   # control_plane_endpoint = # "${local.subdomain}.${local.basedomain}"
   # TODO: kube-vip?
@@ -46,7 +49,6 @@ locals {
     KUBELET_URL   = local.KUBELET_URL
     KUBECTL_URL   = local.KUBECTL_URL
     CALICOCTL_URL = local.CALICOCTL_URL
-    metal_asn     = local.metal_asn
   })
 
 }
@@ -88,6 +90,7 @@ data "ct_config" "controlplane" {
       service_cidr_range  = local.service_cidr_range
       external_cidr_range = local.external_cidr_range
       certificate_key     = var.kubeadm_certificate_key
+      metal_asn           = local.metal_asn
       token               = var.kubeadm_token
     })
   ]
@@ -118,9 +121,6 @@ resource "metal_device" "worker" {
   billing_cycle         = "hourly"
   project_id            = data.metal_project.kubernetes.id
   user_data             = data.ct_config.worker.rendered
-  lifecycle {
-    create_before_destroy = true
-  }
 }
 
 data "ct_config" "worker" {
@@ -128,7 +128,8 @@ data "ct_config" "worker" {
   snippets = [
     templatefile("./ignition/worker.yaml", {
       token                  = var.kubeadm_token
-      control_plane_endpoint = local.control_plane_endpoint
+      control_plane_endpoint = "[${local.kubernetes_service}]:443"
+
       certificate_key        = null
     })
   ]
@@ -138,9 +139,6 @@ resource "metal_bgp_session" "worker" {
   count          = local.worker_count
   device_id      = metal_device.worker[count.index].id
   address_family = "ipv6"
-  lifecycle {
-    create_before_destroy = true
-  }
 }
 
 output "controlplane_ipv4" {

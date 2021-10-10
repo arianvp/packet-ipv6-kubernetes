@@ -31,6 +31,7 @@ systemd:
         ExecStart=/usr/bin/chown core:core /home/core/.kube/config
 
         ExecStart=/opt/bin/kubectl create -f https://docs.projectcalico.org/manifests/tigera-operator.yaml
+        ExecStart=/bin/sh -c 'cat /etc/resourcs/calico.yaml.tpl | envsubst > /etc/resources/calico.yaml'
         ExecStart=/opt/bin/kubectl create -f /etc/resources/calico.yaml
         [Install]
         WantedBy=multi-user.target
@@ -70,7 +71,7 @@ storage:
           networking:
             serviceSubnet: "${service_cidr_range}"
             podSubnet: "${pod_cidr_range}"
-    - path: "/etc/resources/calico.yaml"
+    - path: "/etc/resources/calico.yaml.tpl"
       contents:
         inline: |
           ---
@@ -90,3 +91,23 @@ storage:
           metadata:
             name: default
           spec: {}
+          ---
+          apiVersion: projectcalico.org/v3
+          kind: BGPConfiguration
+          metadata:
+            name: default
+          spec:
+            logSeverityScreen: Info
+            nodeToNodeMeshEnabled: false
+            asNumber: 65000
+            serviceClusterIPs:
+              - cidr: "${service_cidr_range}"
+          ---
+          apiVersion: projectcalico.org/v3
+          kind: BGPPeer
+          metadata:
+            name: "controlplane"
+          spec:
+            peerIP: "$${COREOS_PACKET_IPV6_GATEWAY}"
+            asNumber: 65530
+            node: "controlplane"

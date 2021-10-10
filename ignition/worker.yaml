@@ -6,7 +6,7 @@ systemd:
         [Unit]
         ConditionFirstBoot=yes
         [Service]
-        ExecStart=/usr/bin/vgcreate lvmvg /dev/sda
+        ExecStart=/usr/sbin/vgcreate lvmvg /dev/sda
         [Install]
         WantedBy=multi-user.target
     - name: kubeadm.service
@@ -47,7 +47,7 @@ storage:
           discovery:
             bootstrapToken:
               token: "${token}"
-              apiServerEndpoint: "[${control_plane_endpoint}]:6443"
+              apiServerEndpoint: "${control_plane_endpoint}"
               unsafeSkipCAVerification: true
           %{ if certificate_key != null}
           controlPlane:
