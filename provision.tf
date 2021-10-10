@@ -10,7 +10,7 @@ variable "kubeadm_certificate_key" {
 }
 
 locals {
-  worker_count        = 1
+  worker_count        = 0
   pod_cidr_range      = cidrsubnet(data.metal_precreated_ip_block.addresses.cidr_notation, 8, 1)
   service_cidr_range_ = cidrsubnet(data.metal_precreated_ip_block.addresses.cidr_notation, 8, 2)
   # NOTE: subnet size for services in kubernetes can only be 20 bits in size;
@@ -34,7 +34,7 @@ locals {
 
   KUBECTL_URL = "https://storage.googleapis.com/kubernetes-release/release/${local.K8S_VERSION}/bin/linux/amd64/kubectl"
 
-  CALICOCTL_URL = "https://github.com/projectcalico/calicoctl/releases/download/v3.16.0/calicoctl"
+  CALICOCTL_URL = "https://github.com/projectcalico/calicoctl/releases/download/v3.20.2/calicoctl"
 
   # TODO: Change to HTTPS once ISRG X1 is used. Sent a request for that to flatcar folks. Other option is to reverse proxy flatcar
   # re: https://community.letsencrypt.org/t/production-chain-changes/150739/1
