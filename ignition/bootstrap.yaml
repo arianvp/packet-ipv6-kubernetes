@@ -1,0 +1,14 @@
+systemd:
+  units:
+    - name: flatcar-install.service
+      enabled: true
+      contents: |
+        [Unit]
+        After=network-online.target
+        Wants=network-online.target
+        [Service]
+        Type=oneshot
+        ExecStart=/usr/bin/flatcar-install -d /dev/sda -o packet
+        ExecStart=/usr/bin/systemctl reboot
+        [Install]
+        WantedBy=multi-user.target
