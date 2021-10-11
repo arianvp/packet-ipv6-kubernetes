@@ -1,0 +1,22 @@
+{
+  "ignition": {
+    "config": {},
+    "security": {
+      "tls": {}
+    },
+    "timeouts": {},
+    "version": "2.3.0"
+  },
+  "networkd": {},
+  "passwd": {},
+  "storage": {},
+  "systemd": {
+    "units": [
+      {
+        "contents": "[Service]\nType=oneshot\nExecStart=/usr/bin/flatcar-install -d /dev/sda -o packet\nExecStart=/usr/bin/systemctl reboot\n[Install]\nWantedBy=multi-user.target\n",
+        "enabled": true,
+        "name": "flatcar-install.service"
+      }
+    ]
+  }
+}
