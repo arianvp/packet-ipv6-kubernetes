@@ -1,0 +1,4 @@
+set base-url http://beta.release.flatcar-linux.net/amd64-usr/current
+kernel ${base-url}/flatcar_production_pxe.vmlinuz initrd=flatcar_production_pxe_image.cpio.gz flatcar.first_boot=1 console=ttyS1,115200n8 flatcar.autologin ignition.config.url=https://raw.githubusercontent.com/arianvp/packet-ipv6-kubernetes/metal/ignition/bootstrap.json
+initrd ${base-url}/flatcar_production_pxe_image.cpio.gz
+boot
