@@ -10,7 +10,7 @@ variable "kubeadm_certificate_key" {
 }
 
 locals {
-  worker_count        = 0
+  worker_count        = 2
   pod_cidr_range      = cidrsubnet(data.metal_precreated_ip_block.addresses.cidr_notation, 8, 1)
   service_cidr_range_ = cidrsubnet(data.metal_precreated_ip_block.addresses.cidr_notation, 8, 2)
   # NOTE: subnet size for services in kubernetes can only be 20 bits in size;
@@ -19,15 +19,11 @@ locals {
   external_cidr_range = cidrsubnet(data.metal_precreated_ip_block.addresses.cidr_notation, 8, 3)
 
   # NOTE: If we run kube-proxy and calico-node on the control-plane, we can use this as the control_plane_endpoint!!!
-  kubernetes_service =  cidrhost(local.service_cidr_range, 1)
-
-  # control_plane_endpoint = # "${local.subdomain}.${local.basedomain}"
-  # TODO: kube-vip?
-  control_plane_endpoint = metal_device.controlplane.access_public_ipv6
+  kubernetes_service = cidrhost(local.service_cidr_range, 1)
 
   metal_asn = 65530 # NOTE: this wasn't actually documented anywhere? I found it "somewhere"
 
-  K8S_VERSION = "v1.22.2"
+  K8S_VERSION = "v1.22.3"
   KUBEADM_URL = "https://storage.googleapis.com/kubernetes-release/release/${local.K8S_VERSION}/bin/linux/amd64/kubeadm"
 
   KUBELET_URL = "https://storage.googleapis.com/kubernetes-release/release/${local.K8S_VERSION}/bin/linux/amd64/kubelet"
@@ -112,15 +108,15 @@ resource "random_pet" "worker" {
 }
 
 resource "metal_device" "worker" {
-  count                 = local.worker_count
-  hostname              = random_pet.worker[count.index].id
-  plan                  = "t1.small.x86"
-  facilities            = ["ams1"]
-  operating_system      = "custom_ipxe"
-  ipxe_script_url       = local.IPXE_URL
-  billing_cycle         = "hourly"
-  project_id            = data.metal_project.kubernetes.id
-  user_data             = data.ct_config.worker.rendered
+  count            = local.worker_count
+  hostname         = random_pet.worker[count.index].id
+  plan             = "t1.small.x86"
+  facilities       = ["ams1"]
+  operating_system = "custom_ipxe"
+  ipxe_script_url  = local.IPXE_URL
+  billing_cycle    = "hourly"
+  project_id       = data.metal_project.kubernetes.id
+  user_data        = data.ct_config.worker.rendered
 }
 
 data "ct_config" "worker" {
@@ -129,8 +125,7 @@ data "ct_config" "worker" {
     templatefile("./ignition/worker.yaml", {
       token                  = var.kubeadm_token
       control_plane_endpoint = "[${local.kubernetes_service}]:443"
-
-      certificate_key        = null
+      certificate_key        =  var.kubeadm_certificate_key
     })
   ]
 }
@@ -164,7 +159,7 @@ output "calico_bgp_peers" {
 resource "null_resource" "write_kubeconfig" {
   provisioner "local-exec" {
     command = <<EOF
-      curl --insecure --connect-timeout 500 'https://[${metal_device.controlplane.access_public_ipv6}]:6443/api/v1/namespaces/kube-public/configmaps/cluster-info' | jq -r .data.kubeconfig > oidc.conf
+      curl --insecure --connect-timeout 500 'https://[${local.kubernetes_service}]/api/v1/namespaces/kube-public/configmaps/cluster-info' | jq -r .data.kubeconfig > oidc.conf
       kubectl config set-credentials oidc \
         --kubeconfig=oidc.conf \
         --exec-api-version=client.authentication.k8s.io/v1beta1 \
